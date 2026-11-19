@@ -1,0 +1,19 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync,writeFileSync,statSync,rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { openDatabase } from '../src/db.mjs';
+import { createServices } from '../src/services.mjs';
+import { exportSqliteForPostgres,verifySnapshot,replayToFreshSQLite } from '../migration/sqlite-pg.mjs';
+const schema=fileURLToPath(new URL('../db/schema.sql',import.meta.url));
+function fixture(){const temp=mkdtempSync(join(tmpdir(),'proof-r3-migrate-'));const db=openDatabase(':memory:'),svc=createServices(db);const a=svc.createUser({name:'Alice',email:'alice@proof.example',password:'ThisIsSecure1234'});svc.createQuote(a.user.id,a.orgId,{title:'Migration quote',clientName:'Client',items:[{description:'A',qty:1,unitPriceCents:99000,unitCostCents:21000}]});return {db,svc,temp,close:()=>{db.close();rmSync(temp,{recursive:true,force:true})}}}
+test('R3 MIGRATION 01: export has full table inventory and verified integrity',()=>{const f=fixture();try{const d=join(f.temp,'snapshot'),result=exportSqliteForPostgres(f.db,d),x=verifySnapshot(d);assert.equal(result.tables,x.result.length);assert.equal(x.manifest.auditHash,f.svc.verifyAudit().lastHash);assert.ok(result.tables>=25);assert.ok(result.rows>=7)}finally{f.close()}});
+test('R3 MIGRATION 02: replay creates equivalent sqlite without modifying source',()=>{const f=fixture();try{const d=join(f.temp,'snapshot');exportSqliteForPostgres(f.db,d);const dest=join(f.temp,'restored.sqlite'),copy=replayToFreshSQLite(d,dest,schema);assert.equal(copy.ok,true);const other=openDatabase(dest);try{assert.equal(other.prepare('SELECT COUNT(*) AS n FROM quotes').get().n,1);assert.equal(createServices(other).verifyAudit().lastHash,f.svc.verifyAudit().lastHash)}finally{other.close()}}finally{f.close()}});
+test('R3 MIGRATION 03: altered exported row rejected by digest',()=>{const f=fixture();try{const d=join(f.temp,'snapshot');exportSqliteForPostgres(f.db,d);const p=join(d,'users.jsonl');writeFileSync(p,readFileSync(p,'utf8').replace('alice@proof.example','attacker@proof.example'));assert.throws(()=>verifySnapshot(d),/digest mismatch/)}finally{f.close()}});
+test('R3 MIGRATION 04: an existing destination cannot be overwritten',()=>{const f=fixture();try{const d=join(f.temp,'snapshot');exportSqliteForPostgres(f.db,d);assert.throws(()=>exportSqliteForPostgres(f.db,d),/already exists/)}finally{f.close()}});
+test('R3 MIGRATION 05: corrupt financial ledger blocks export',()=>{const f=fixture();try{f.db.prepare('INSERT INTO ledger_transactions(id,source_key,created_at) VALUES(?,?,?)').run('bad','bad','2026-11-19');assert.throws(()=>exportSqliteForPostgres(f.db,join(f.temp,'bad')),/integrity\/ledger\/audit/)}finally{f.close()}});
+test('R3 MIGRATION 06: export directory and data files use restrictive modes',()=>{const f=fixture();try{const d=join(f.temp,'snapshot');exportSqliteForPostgres(f.db,d);assert.equal(statSync(d).mode&0o777,0o700);assert.equal(statSync(join(d,'users.jsonl')).mode&0o777,0o600)}finally{f.close()}});
+test('R3 MIGRATION 07: cutover SQL includes all core & R3 financial tables',()=>{const sql=readFileSync(fileURLToPath(new URL('../db/postgres/001_schema.sql',import.meta.url)),'utf8');for(const name of ['users','organizations','quotes','referral_rewards','audit_events','payout_preparations','provider_intents','legal_acceptances'])assert.match(sql,new RegExp('CREATE TABLE IF NOT EXISTS '+name+'\\b'))});
+test('R3 MIGRATION 08: PostgreSQL policies enforce app session tenant boundaries on data',()=>{const sql=readFileSync(fileURLToPath(new URL('../db/postgres/002_tenant_rls.sql',import.meta.url)),'utf8');for(const name of ['organizations','memberships','quotes','invoices','disputes'])assert.match(sql,new RegExp('ALTER TABLE '+name+' ENABLE ROW LEVEL SECURITY'));assert.match(sql,/proof\.actor_id\(\)/)});
