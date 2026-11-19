@@ -1,0 +1,393 @@
+{
+  "product": "OSMANX PROOF",
+  "release": "R5",
+  "kind": "Local-source-prototype",
+  "checks": {
+    "nodeTests": 218,
+    "nodeTestsPassed": 218,
+    "httpAcceptance": 14,
+    "concurrentHealthRequests": 80,
+    "encryptedRestoreLocal": true,
+    "externalNextBuild": false,
+    "realPostgres": false,
+    "externalStripeTest": false,
+    "productionStaging": false
+  },
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "d72e30d952fa6cbdd5190af5150da6de316b5e93b6c8a2d0f9b661b54694823c",
+      "size": 1433
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "45e6de091b22fc990f37aeb9c05838e73fc7cced4fd858f6f78bc7d3ae01a847",
+      "size": 1760
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "85c1f8ce3dc4e79cc5ef6d2582db0472d661fa230cefb7026d41385a366f7f9f",
+      "size": 218
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "95371585c4dbd8b0858d053499f489f5d502541b6f2f42eacba7a97dbebd44d1",
+      "size": 764
+    },
+    {
+      "path": "Dockerfile.dev",
+      "sha256": "be493d39bc0ee3352de64c4a32a0df0a68d03b9c74d27a80023c6e12a166d2a0",
+      "size": 297
+    },
+    {
+      "path": "R1_RELEASE_NOTES.md",
+      "sha256": "a2b3ae4dfc813516f5a9555be3ef8c0547ca206781b23d59fa9284e095e49f16",
+      "size": 1675
+    },
+    {
+      "path": "R2_MANIFEST.json",
+      "sha256": "ad66665a0b26b3eb218482376da8a876f01840063b31f8a96a0f0b6913554759",
+      "size": 9144
+    },
+    {
+      "path": "R2_RELEASE_NOTES.md",
+      "sha256": "7a3f556385d62e6e837e45b5ad01cf24f24a877ac26b92d79990856a17ace775",
+      "size": 1546
+    },
+    {
+      "path": "R3_MANIFEST.json",
+      "sha256": "c7bd8949b54293009a89c0a4ed44b354ff791082307e2e99c176dce4cc929e23",
+      "size": 14944
+    },
+    {
+      "path": "R3_RELEASE_NOTES.md",
+      "sha256": "7ef0b2d32eede045804918eb02fa60efffd3dbe41825583ca047bd261b0afe99",
+      "size": 628
+    },
+    {
+      "path": "R4_MANIFEST.json",
+      "sha256": "2f8d622cf7951a818cd49b3757fd55e105cced73caf970c0a7901f8da533524d",
+      "size": 19012
+    },
+    {
+      "path": "R4_RELEASE_NOTES.md",
+      "sha256": "f977a306a7d3ce7e2cd5534d7a44fd1869b9bf8be9e2bf065f7166c1372a693f",
+      "size": 2332
+    },
+    {
+      "path": "R5_RELEASE_NOTES.md",
+      "sha256": "0e92801f771f32126e799f128727a7c37d0689e1f92515ecbd82e063b1b0e5d6",
+      "size": 2522
+    },
+    {
+      "path": "README.md",
+      "sha256": "d8b55975aa0d7783fbe064ce96dca98a0cd678594a4bd27c08f130d89e17e13c",
+      "size": 6498
+    },
+    {
+      "path": "compose.dev.yaml",
+      "sha256": "297f1afde94629a5434f189d503671c50f1dd53feccebafbf33f0a86dfe800f0",
+      "size": 314
+    },
+    {
+      "path": "compose.staging.yaml",
+      "sha256": "dfa0f56323d7a47414c937439425bf90db4599ad34c7e1cc3e32bb7082c93612",
+      "size": 455
+    },
+    {
+      "path": "db/postgres/001_schema.sql",
+      "sha256": "ec29fa7ac50b2b7c97fa36a0149a677f61c975eacc182516c2ed94dfc1b65eb0",
+      "size": 12415
+    },
+    {
+      "path": "db/postgres/002_tenant_rls.sql",
+      "sha256": "485a1811d6ca92173ecbdc89c163d06ff88ba88caae0bcd0a33f4f5eb3b3cd83",
+      "size": 4943
+    },
+    {
+      "path": "db/postgres/003_rls_smoke.sql",
+      "sha256": "5e77133b79047f8e500b1a0ea3ab7e04dbbc885bbda8a945dd95471a4af20161",
+      "size": 1724
+    },
+    {
+      "path": "db/postgres/004_app_role_hardening.sql",
+      "sha256": "95865f328e11028ddf2abe1eaf4a6d4e83c93341aaa18bc2f29436150620655a",
+      "size": 3236
+    },
+    {
+      "path": "db/postgres/005_role_matrix_smoke.sql",
+      "sha256": "70f39c6bb656f1ff64cf97adb134bb6576883c52aade25fccab30e46835e45ea",
+      "size": 1383
+    },
+    {
+      "path": "db/postgres/006_workflow.sql",
+      "sha256": "e4efa709cd57548da8f8d49efa54e6392cad624b9007ba1472b3c339717b0ff8",
+      "size": 4043
+    },
+    {
+      "path": "db/postgres/007_workflow_rls_smoke.sql",
+      "sha256": "0fa5fd0040a3cc2bbae5f9a365f9c7651353bf71fdfc087c8e2ee12d744ea527",
+      "size": 1628
+    },
+    {
+      "path": "db/postgres/generate_sql.py",
+      "sha256": "c61853fc41b2769d910aaf9d358f51218c4eff5f03f29a048ff115d5c5a216ec",
+      "size": 604
+    },
+    {
+      "path": "db/schema.sql",
+      "sha256": "20c9c842eff48a95f375e67bce3ff254e8e2f5b1f2a877fdb7dce2a6dfbb68c0",
+      "size": 14632
+    },
+    {
+      "path": "deploy/compose.r3.staging.yaml",
+      "sha256": "4893e1014fa4275645235b25bea622873734ee61aa298ad1cc6270cd96da949f",
+      "size": 1605
+    },
+    {
+      "path": "deploy/compose.r4.staging.yaml",
+      "sha256": "da53dc15ac28247050a79ffa92e2116d9207bdba3fe1b57d16a7b1dca1fac61a",
+      "size": 1711
+    },
+    {
+      "path": "deploy/r4-postgres-test.sh",
+      "sha256": "d8bd3e3b5649547aeec4e84025f1288ede6e8cf1b296cd83fdaceace5c810007",
+      "size": 474
+    },
+    {
+      "path": "deploy/r5-postgres-test.sh",
+      "sha256": "4bcc9d04129c22af32ec9cbe75fb310b3541e69ef6941d77d38ad773fccadcbc",
+      "size": 709
+    },
+    {
+      "path": "docs/API.md",
+      "sha256": "71a08ec916419296405f8b0ef22d08944be52744a817e9315433941e82542da8",
+      "size": 6688
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "ed5affb75f7e526efd625ad86d10cb96c65c8004ea69204a45898c669014c1a5",
+      "size": 4829
+    },
+    {
+      "path": "docs/FINANCIAL_POLICY.md",
+      "sha256": "a83ae3d5b3587e596b09a9d605fac8f89380fff0bd794a8e2c011c42be1349b6",
+      "size": 4291
+    },
+    {
+      "path": "docs/R1_MANIFEST.json",
+      "sha256": "147c3c43b73a5b152dbd574122e2964ca8e2fc585f124b087c0b817ce012fdf2",
+      "size": 6255
+    },
+    {
+      "path": "docs/R1_QA.md",
+      "sha256": "e7609be69441be7ecd247eec416036f2f633117756b757d82129fd8b01d8ece0",
+      "size": 2548
+    },
+    {
+      "path": "docs/R1_README_ARCHIVE.md",
+      "sha256": "ed3817541c2daa360abab6b7257806dcbc555fd53446b1ced78494973fa537d1",
+      "size": 10076
+    },
+    {
+      "path": "docs/R2_IMPLEMENTATION.md",
+      "sha256": "310fdb3df9ed9818a89b78bf7866df0e11002ab50ac17123912b7a84a312c9f0",
+      "size": 3617
+    },
+    {
+      "path": "docs/R2_ORIGINAL_PLAN.md",
+      "sha256": "bcc4073f3bb3a4281e38925f99255dabfecb66e3b236cca28666cd57eeea769e",
+      "size": 1714
+    },
+    {
+      "path": "docs/R2_PLAN.md",
+      "sha256": "bcc4073f3bb3a4281e38925f99255dabfecb66e3b236cca28666cd57eeea769e",
+      "size": 1714
+    },
+    {
+      "path": "docs/R2_QA.md",
+      "sha256": "5029f9a369a241b1626ba09ad6b97af6aec287c4fbf43520236fc1519b9e3e24",
+      "size": 2213
+    },
+    {
+      "path": "docs/R3_IMPLEMENTATION.md",
+      "sha256": "189f6478b8749825ca76461b415b133eff2fbc96b895632bcf6d6297ea37b6f8",
+      "size": 2461
+    },
+    {
+      "path": "docs/R3_PLAN.md",
+      "sha256": "2a14261436107cdfe9991d30666b346ea894c509f2295560c03b0fc34d54f856",
+      "size": 1517
+    },
+    {
+      "path": "docs/R3_QA.md",
+      "sha256": "9723d49ace25b15a319fa16f51268044b2d6abc7738b9104c2982ba8193d47a0",
+      "size": 1224
+    },
+    {
+      "path": "docs/R4_IMPLEMENTATION.md",
+      "sha256": "98cfa9bc7328904f2f76fbc6357fd5354c5ad5a5cf7a0d7d1440a5cf761f344a",
+      "size": 3162
+    },
+    {
+      "path": "docs/R4_PLAN.md",
+      "sha256": "93f8756e9412115baf35bf45f375575d58ee3065eb113d9d4a16f0e74e730ae7",
+      "size": 1153
+    },
+    {
+      "path": "docs/R4_QA.md",
+      "sha256": "8dc867a8c46dc317cf970e584fac9333cad8c7e431c2466f619bd47b187cd8b0",
+      "size": 1972
+    },
+    {
+      "path": "docs/R5_IMPLEMENTATION.md",
+      "sha256": "2993afce22d8beb9ed16eee570d310e0f3b08644bad7526b14a55d542d69944f",
+      "size": 4989
+    },
+    {
+      "path": "docs/R5_ORIGINAL_PLAN.md",
+      "sha256": "b6be37033a0eb6da0f76cc2f1ac8d66094595419700c5c7c95446e8ca80519b1",
+      "size": 1125
+    },
+    {
+      "path": "docs/R5_PLAN.md",
+      "sha256": "08e1099a88d40108a25ca8cc99ccb0f9d6826dddd388a839b47fcf75ead73bbd",
+      "size": 1436
+    },
+    {
+      "path": "docs/R5_QA.md",
+      "sha256": "a64133069e4e609ef53cca6dd37c36751cee59ba0bf1c4b8a38e0937d64b8481",
+      "size": 2455
+    },
+    {
+      "path": "docs/R6_PLAN.md",
+      "sha256": "6ed17c8ab7b899e30c5c358e23eebb5b58543fcc11e573f7525d2c4ac1030edb",
+      "size": 1437
+    },
+    {
+      "path": "docs/SECURITY.md",
+      "sha256": "aae0eb5507715007a042d667b55b510cf370c9689ac9021876d2c95e1b1a6873",
+      "size": 6892
+    },
+    {
+      "path": "migration/cli.mjs",
+      "sha256": "cb44be13bccafd6ad46104a95290762aec39ef602c592acc6eb111fdc759bac3",
+      "size": 1243
+    },
+    {
+      "path": "migration/sqlite-pg.mjs",
+      "sha256": "58e85cb906cdee9ee807817342972b210626564a0653a1a2d6fb00bc9221b4a0",
+      "size": 8557
+    },
+    {
+      "path": "package.json",
+      "sha256": "208c4c546932b9861399086f55d56fc0c9d24352bc179464bb46010e79fc54cd",
+      "size": 1817
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "3173b094eb2c22fae33d795377b0c330d4107d364e71b418cb15928a91e0e813",
+      "size": 60553
+    },
+    {
+      "path": "public/client.css",
+      "sha256": "908a134f8b0a9f29dcec5f35af930333c4e2823fddbd895e1a922fa5bed5f50f",
+      "size": 1996
+    },
+    {
+      "path": "public/client.js",
+      "sha256": "fc9749688c6f4340d2fd643f462dffaac5f0c55190716bb575d95370b93b9826",
+      "size": 1383
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "3704ac1c9180f8c0c8d08210f6ef7518fe07a436c01539dc76892cbaa0f534a5",
+      "size": 696
+    },
+    {
+      "path": "public/print.css",
+      "sha256": "b43d72e4517b5307b2c32eb38ec3f31c7882d56d39a59e3621277faa0fa7c0db",
+      "size": 1219
+    },
+    {
+      "path": "public/print.js",
+      "sha256": "b6dc4e3d94ae4a517a5feae86e7f1cf9f8a6a52680f0f0f3fd93823f38a927b1",
+      "size": 101
+    },
+    {
+      "path": "public/review.js",
+      "sha256": "8710b19abdf1af31c89cc4782ab0b5fe89925e261791b9658e7498b37b618e47",
+      "size": 1469
+    },
+    {
+      "path": "public/styles.css",
+      "sha256": "c34843e6ebb6d0c512a9fbfd8258aefbcfcef65e4e5726d5c92f04f67e5225d1",
+      "size": 16695
+    },
+    {
+      "path": "qa/R5_VISUAL_QA.md",
+      "sha256": "cc3b001cdf463ef38030e9c89010ef227feb673d4b472964a0bd5475cd6a4ed6",
+      "size": 776
+    },
+    {
+      "path": "qa/browser_qa.py",
+      "sha256": "8153dca31647ce9d326acef44c7eaa32e6d4b0836e5b0dd14b1e0d44999b7a50",
+      "size": 4962
+    },
+    {
+      "path": "qa/client_preview.py",
+      "sha256": "227408b214940445bd478fc00a563ab789ac8248101bd07a217ddac3a02408b7",
+      "size": 2884
+    },
+    {
+      "path": "qa/r5_client_desktop.png",
+      "sha256": "f95bbcc25490ffec9add84198124486bf2456113b084c223583595421587d52d",
+      "size": 86691
+    },
+    {
+      "path": "qa/r5_client_mobile.png",
+      "sha256": "914cb7dac50c30750dccdd769733f7e0a568d12ef6361b3c295ea72be5a05c87",
+      "size": 78084
+    },
+    {
+      "path": "qa/r5_client_visual.html",
+      "sha256": "4f9340dab7f1181f465d3865a6709d2add9d193f19de1767f01428465f2c3969",
+      "size": 4382
+    },
+    {
+      "path": "qa/visual_01_auth.png",
+      "sha256": "fc44f81304ecb1721c4d16798351552a048f42bc0dfcce46ca7c34d081303c8b",
+      "size": 593295
+    },
+    {
+      "path": "qa/visual_02_dashboard.png",
+      "sha256": "b2348c7d7b34ef93e7b92a17bb8194b359f3dbcf1d7311cea72d486a2abc40f4",
+      "size": 435042
+    },
+    {
+      "path": "qa/visual_03_proposal_editor.png",
+      "sha256": "a147e54e27352e33b51ba229fed31af0a2f59aa32ddf8d77b66c8fa6969bf565",
+      "size": 222715
+    },
+    {
+      "path": "qa/visual_04_billing.png",
+      "sha256": "26d748a2e36a713ae646710b96424343f4c8bfc22fb448f810f6815275f71bde",
+      "size": 332311
+    },
+    {
+      "path": "qa/visual_05_referrals.png",
+      "sha256": "d237717a18a386cf5240f1ca6374057a92cc1abf5afa56f4271cd11faace2acf",
+      "size": 232991
+    },
+    {
+      "path": "qa/visual_06_mobile_overview.png",
+      "sha256": "ee7c8be5db9eca537bfe85d66bc6d78798c317a79a2430c22fac29c2d3fdbe17",
+      "size": 193830
+    },
+    {
+      "path": "qa/visual_07_mobile_editor.png",
+      "sha256": "02219b5aedfb0cbe57992e0500af952b5b8d770c734dffe8538ce064f17de420",
+      "size": 138285
+    },
+    {
+      "pa
