@@ -1,0 +1,210 @@
+{
+  "project": "OSMANX PROOF",
+  "release": "R1",
+  "status": "local prototype; not production",
+  "date": "2026-11-19",
+  "automated_tests": {
+    "passed": 40,
+    "total": 40
+  },
+  "visual_qa": {
+    "type": "offline mock rendering",
+    "screenshots": 7,
+    "browser_js_errors": 0,
+    "full_browser_e2e": "blocked by browser policy"
+  },
+  "payment_provider": "not configured; sandbox only",
+  "github": "not pushed; no target repository selected",
+  "files": [
+    {
+      "path": ".env.example",
+      "size": 248,
+      "sha256": "d6daf44cf491ad6139486947fa78cf9cfc3ff81bf610a47bf1e6b302b8c5e574"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "size": 234,
+      "sha256": "cc1cee2eebde8ae40d0c0501691acb65e31d0a8b19d5503aaab3f62494408b48"
+    },
+    {
+      "path": ".gitignore",
+      "size": 72,
+      "sha256": "c1d823affb822738adbfe3e7750c826fa66767cde3401ece8b8712c217f9c629"
+    },
+    {
+      "path": "Dockerfile.dev",
+      "size": 297,
+      "sha256": "be493d39bc0ee3352de64c4a32a0df0a68d03b9c74d27a80023c6e12a166d2a0"
+    },
+    {
+      "path": "R1_RELEASE_NOTES.md",
+      "size": 1675,
+      "sha256": "a2b3ae4dfc813516f5a9555be3ef8c0547ca206781b23d59fa9284e095e49f16"
+    },
+    {
+      "path": "README.md",
+      "size": 10076,
+      "sha256": "ed3817541c2daa360abab6b7257806dcbc555fd53446b1ced78494973fa537d1"
+    },
+    {
+      "path": "compose.dev.yaml",
+      "size": 314,
+      "sha256": "297f1afde94629a5434f189d503671c50f1dd53feccebafbf33f0a86dfe800f0"
+    },
+    {
+      "path": "db/schema.sql",
+      "size": 6888,
+      "sha256": "cf9c7958d5f670a08db163e970dfd1255b0a292b8dceb8725535ebf66014a317"
+    },
+    {
+      "path": "docs/API.md",
+      "size": 4094,
+      "sha256": "2820785d3a7cfb592158910ceddbff0707061362b9953431c8c0b8bf236c749f"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "size": 4829,
+      "sha256": "ed5affb75f7e526efd625ad86d10cb96c65c8004ea69204a45898c669014c1a5"
+    },
+    {
+      "path": "docs/FINANCIAL_POLICY.md",
+      "size": 3487,
+      "sha256": "aaf3db81b80b2c9e860889632e95efd8aa90c32df5d0fede90d3edf4476fc0ba"
+    },
+    {
+      "path": "docs/R1_QA.md",
+      "size": 2548,
+      "sha256": "e7609be69441be7ecd247eec416036f2f633117756b757d82129fd8b01d8ece0"
+    },
+    {
+      "path": "docs/R2_PLAN.md",
+      "size": 1714,
+      "sha256": "bcc4073f3bb3a4281e38925f99255dabfecb66e3b236cca28666cd57eeea769e"
+    },
+    {
+      "path": "docs/SECURITY.md",
+      "size": 5134,
+      "sha256": "13e956812a83840be1f19a3ee1fc86f3d2829dfa0cc885b2987e9d3a447560f9"
+    },
+    {
+      "path": "package.json",
+      "size": 605,
+      "sha256": "833565969adb4cb1bc5334fa55da06038185e848b9536a21d0232eee5f9ad858"
+    },
+    {
+      "path": "public/app.js",
+      "size": 48152,
+      "sha256": "3a9546e0ebb5c57b80407eae5b331c5b151e19dcda5757ef1216a9c192155a2d"
+    },
+    {
+      "path": "public/index.html",
+      "size": 696,
+      "sha256": "3704ac1c9180f8c0c8d08210f6ef7518fe07a436c01539dc76892cbaa0f534a5"
+    },
+    {
+      "path": "public/print.css",
+      "size": 505,
+      "sha256": "dd9fd658d12d3b3349d3e84ea4f41beb1999fdc7662cd1438d4465081ff9aaeb"
+    },
+    {
+      "path": "public/print.js",
+      "size": 101,
+      "sha256": "b6dc4e3d94ae4a517a5feae86e7f1cf9f8a6a52680f0f0f3fd93823f38a927b1"
+    },
+    {
+      "path": "public/styles.css",
+      "size": 16380,
+      "sha256": "45c7af8daeade2c4e833b046b52da1b094f75a5879ca0ecc1626a47bf37cae38"
+    },
+    {
+      "path": "qa/browser_qa.py",
+      "size": 4929,
+      "sha256": "a0d934cc35aa064878d9140f8150760e4f8e5c67f477c08708e79146f38f3969"
+    },
+    {
+      "path": "qa/visual_01_auth.png",
+      "size": 593195,
+      "sha256": "49ced4ef16e204fa6d3f62b772e7cd454316f503b15f8fd8480bdd9c351f6ccf"
+    },
+    {
+      "path": "qa/visual_02_dashboard.png",
+      "size": 435042,
+      "sha256": "b2348c7d7b34ef93e7b92a17bb8194b359f3dbcf1d7311cea72d486a2abc40f4"
+    },
+    {
+      "path": "qa/visual_03_proposal_editor.png",
+      "size": 222608,
+      "sha256": "b9b1d86080c6e17bc63ccaf7ff85c2b590c359a5120d1d4baf55891e38e91ee4"
+    },
+    {
+      "path": "qa/visual_04_billing.png",
+      "size": 303886,
+      "sha256": "4ec4bf128e59b22e3221bd6dd67f3b963ad39196629b0f634c000a977592052e"
+    },
+    {
+      "path": "qa/visual_05_referrals.png",
+      "size": 232884,
+      "sha256": "43511b570636a4666e33811d041e15902e150b29762b816850103b5e07a3e222"
+    },
+    {
+      "path": "qa/visual_06_mobile_overview.png",
+      "size": 193830,
+      "sha256": "ee7c8be5db9eca537bfe85d66bc6d78798c317a79a2430c22fac29c2d3fdbe17"
+    },
+    {
+      "path": "qa/visual_07_mobile_editor.png",
+      "size": 134204,
+      "sha256": "9e7718ae20d10028a0e25f0faea3777aef6625f1c4a9c30c4b16b9b5211a876f"
+    },
+    {
+      "path": "qa/visual_mock_qa.py",
+      "size": 3495,
+      "sha256": "5d8792b62e6fc54afc5f2ee2de45b25c25c07dc5adb7a42da8295aadf1827930"
+    },
+    {
+      "path": "qa/visual_results.json",
+      "size": 433,
+      "sha256": "e71f483d57bf76ecf1ccbcb5b9c9da310c87bcdba43c800d4c02d42b47751678"
+    },
+    {
+      "path": "src/admin-cli.mjs",
+      "size": 372,
+      "sha256": "20898fa625ea77abbc0fc236b324e76f5b808dd909b7fd574f70bbad6573fc3f"
+    },
+    {
+      "path": "src/db.mjs",
+      "size": 1053,
+      "sha256": "c3ddb608c99652a84e96766017a59649f47dbeafe00c1f5e9c46e1ddc58816f7"
+    },
+    {
+      "path": "src/finance.mjs",
+      "size": 2615,
+      "sha256": "a2f9516c3fcb058cd0acfd20728eaf91314bd816adc658ad22090a6b19684f07"
+    },
+    {
+      "path": "src/security.mjs",
+      "size": 2243,
+      "sha256": "b595b3c0e6f5562d8ef7b2505f63713452904a6df0bd2c6aa2ccfdc3602a7328"
+    },
+    {
+      "path": "src/server.mjs",
+      "size": 14772,
+      "sha256": "76a572d92120d08dda24d1b518ce29cd491304611a0242e04f977debad5c3831"
+    },
+    {
+      "path": "src/services.mjs",
+      "size": 26780,
+      "sha256": "b1621572f907802ac899deb8f784b6982ef99dba0cc4fbd465709a2e3976d6b8"
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "size": 15607,
+      "sha256": "30340772457c28df88f989fa71f0ea9c917e7b28e9aa6cb61921ecd29bc9f4ef"
+    },
+    {
+      "path": "tests/http.test.mjs",
+      "size": 8235,
+      "sha256": "1d6d48093b7b931b84416286ec0794621bcf6317a7ee2ab8d7ebde9c931cd814"
+    }
+  ]
+}
