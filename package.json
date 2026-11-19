@@ -1,0 +1,31 @@
+{
+  "name": "osmanx-proof-r5",
+  "version": "5.0.0",
+  "private": true,
+  "description": "R5: customer-accepted quote to project; milestones, client delivery portal, tenant metrics and fail-closed deployment checks",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
+    "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.mjs",
+    "check": "node --check src/server.mjs && node --check src/services.mjs && node --check src/stripe-test.mjs && node --check src/email-delivery.mjs && node --check src/ops-encrypted.mjs && node --check migration/sqlite-pg.mjs && node --check scripts/r4-release-gate.mjs && node --check scripts/r4-load-smoke.mjs && node --check web-next/lib/proxy-policy.mjs && node --check public/app.js && node --check src/workflow.mjs && node --check scripts/r5-local-acceptance.mjs && node --check scripts/r5-release-gate.mjs && node --check public/client.js && npm test",
+    "init:admin": "node src/admin-cli.mjs",
+    "backup": "node src/ops-cli.mjs backup",
+    "backup:verify": "node src/ops-cli.mjs verify",
+    "restore": "node src/ops-cli.mjs restore",
+    "staging:preflight": "node scripts/staging-preflight.mjs",
+    "drill:recovery": "node scripts/recovery-drill.mjs",
+    "pg:export": "node migration/cli.mjs export",
+    "pg:verify": "node migration/cli.mjs verify",
+    "pg:replay": "node migration/cli.mjs replay",
+    "pg:import": "node migration/cli.mjs import-pg",
+    "load:smoke": "node scripts/r4-load-smoke.mjs",
+    "release:gate": "node scripts/r5-release-gate.mjs",
+    "drill:encrypted": "node scripts/r4-encrypted-drill.mjs",
+    "acceptance:r5": "node scripts/r5-local-acceptance.mjs",
+    "pg:smoke:r5": "sh deploy/r5-postgres-test.sh"
+  }
+}

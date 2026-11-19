@@ -1,0 +1,53 @@
+name: OSMANX PROOF R5 verification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22.16.0'}
+      - name: R1-R5 tests and syntax
+        run: npm run check
+      - name: R5 ephemeral end-to-end HTTP acceptance
+        run: npm run acceptance:r5
+      - name: Local concurrency and rate limit
+        run: npm run load:smoke
+      - name: Encrypted backup restore
+        run: npm run drill:encrypted
+  postgres-rls:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_DB: proof_test, POSTGRES_USER: proof_test, POSTGRES_PASSWORD: proof_test_password}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U proof_test -d proof_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: proof_test_password
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply schema and test tenant role matrix in disposable PostgreSQL 16
+        run: |
+          export DATABASE_URL='postgresql://proof_test:proof_test_password@127.0.0.1:5432/proof_test'
+          sh deploy/r5-postgres-test.sh
+  next-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run: {working-directory: web-next}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22.16.0'}
+      - name: Install pinned dependency versions, typecheck and compile
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+# External CI validation is NOT proof of staging or production deployment.
