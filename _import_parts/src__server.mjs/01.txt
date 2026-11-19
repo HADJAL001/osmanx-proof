@@ -1,0 +1,148 @@
+')return file(res,printJs,'text/javascript; charset=utf-8');
+   if(req.method==='GET'&&startPath==='/review.js')return file(res,reviewJs,'text/javascript; charset=utf-8');
+   if(req.method==='GET'&&startPath==='/client.css')return file(res,clientCss,'text/css; charset=utf-8');
+   if(req.method==='GET'&&startPath==='/client.js')return file(res,clientJs,'text/javascript; charset=utf-8');
+   if(req.method==='GET'&&/^\/c\/[A-Za-z0-9_-]+$/.test(startPath)){
+    const p=svc.workflow.publicDetails(startPath.slice(3));res.setHeader('referrer-policy','no-referrer');
+    res.setHeader('x-robots-tag','noindex,nofollow');res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});return res.end(formatClient(p));
+   }
+   if(req.method==='GET'&&(startPath==='/'||startPath==='/app'))return file(res,index,'text/html; charset=utf-8');
+   if(req.method==='GET'&&startPath.startsWith('/s/')){
+    const q=svc.quoteByShare(startPath.slice(3));res.setHeader('referrer-policy','no-referrer');
+    // Public proposal documents are intentionally non-indexed and time-limited.
+    res.setHeader('x-robots-tag','noindex,nofollow');res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});return res.end(formatHtml(q,{clientReview:true}));
+   }
+   if(!startPath.startsWith('/api/'))throw new HttpError(404,'Not found');
+   const path=startPath.slice(4),url=new URL(req.url,origin),session=sessionOf(req),id=session?.user?.id;
+   const publicMilestone=path.match(/^\/public\/projects\/([A-Za-z0-9_-]+)\/milestones\/([A-Za-z0-9_-]+)\/respond$/);
+   if(req.method==='POST'&&publicMilestone){
+    const suppliedOrigin=req.headers.origin;
+    assert(!suppliedOrigin||suppliedOrigin===origin,403,'Cross-origin client response blocked','ORIGIN');
+    rateLimit(ipOf(req),'client-milestone-response',20);
+    const body=await jsonBody(req),fingerprint=createHmac('sha256',ipSecret).update(ipOf(req)).digest('hex');
+    return send(res,201,{ok:true,...svc.workflow.respond(publicMilestone[1],publicMilestone[2],body,fingerprint)});
+   }
+   const publicProject=path.match(/^\/public\/projects\/([A-Za-z0-9_-]+)$/);
+   if(req.method==='GET'&&publicProject)return send(res,200,{ok:true,project:svc.workflow.publicDetails(publicProject[1])});
+   const publicResponse=path.match(/^\/public\/quotes\/([A-Za-z0-9_-]+)\/respond$/);
+   if(req.method==='POST'&&publicResponse){
+    const suppliedOrigin=req.headers.origin;
+    assert(!suppliedOrigin||suppliedOrigin===origin,403,'Cross-origin public response blocked','ORIGIN');
+    rateLimit(ipOf(req),'quote-response',20);
+    const b=await jsonBody(req),fingerprint=createHmac('sha256',ipSecret).update(ipOf(req)).digest('hex');
+    return send(res,201,{ok:true,...svc.respondToQuote(publicResponse[1],b,fingerprint)});
+   }
+   if(req.method==='POST'&&path==='/webhooks/payments'){
+    assert(mode==='bridge'||mode==='sandbox',503,'Payment bridge disabled');
+    const raw=await rawBody(req),t=req.headers['x-osx-timestamp'],sig=req.headers['x-osx-signature'];
+    assert(verifyWebhook(raw,t,sig,secret),401,'Invalid signed webhook','INVALID_SIGNATURE');
+    let event;try{event=JSON.parse(raw)}catch{throw new HttpError(400,'Invalid webhook JSON')}
+    return send(res,200,{ok:true,...svc.processPaymentEvent(event)});
+   }
+   if(req.method==='POST'&&path==='/webhooks/stripe-test'){
+    assert(mode==='stripe_test'&&!prod,503,'Stripe test webhook disabled');
+    const raw=await rawBody(req,256*1024);
+    verifyStripeSignature(raw,req.headers['stripe-signature'],stripeWebhookSecret);
+    let event;try{event=JSON.parse(raw)}catch{throw new HttpError(400,'Invalid Stripe JSON')}
+    const mapped=mapStripeTestEvent(event);
+    if(!mapped)return send(res,200,{ok:true,ignored:true});
+    return send(res,200,{ok:true,...svc.processPaymentEvent(mapped)});
+   }
+   if(req.method==='POST'&&path==='/compliance/email/confirm'){
+    const b=await jsonBody(req);rateLimit(ipOf(req),'email-confirm',15);
+    return send(res,200,{ok:true,...svc.confirmEmailChallenge(b.token)});
+   }
+   if(req.method==='POST'&&path==='/auth/register'){
+    protect(req,null);rateLimit(ipOf(req),'register',5);
+    const body=await jsonBody(req);
+    const ipHash=createHmac('sha256',ipSecret).update(ipOf(req)).digest('hex');
+    const reg=svc.createUser({...body,ipHash,referralCode:body.referralCode||''});const created=svc.createSession(reg.user.id);
+    return send(res,201,{ok:true,user:reg.user,csrf:created.csrf,organizations:svc.orgs(reg.user.id)}, {'set-cookie':cookieVal(created.secret)});
+   }
+   if(req.method==='POST'&&path==='/auth/login'){
+    protect(req,null);rateLimit(ipOf(req),'login',10);const body=await jsonBody(req);
+    const user=svc.authenticate(body.email,body.password),created=svc.createSession(user.id);
+    return send(res,200,{ok:true,user,csrf:created.csrf,organizations:svc.orgs(user.id)},{'set-cookie':cookieVal(created.secret)});
+   }
+   if(req.method==='GET'&&path==='/me'){
+    return send(res,200,{ok:true,authenticated:!!session,user:session?.user||null,csrf:session?.csrf||null,organizations:session?svc.orgs(id):[],paymentMode:mode,proPriceCents:PRO_PRICE_CENTS,isDemo:mode==='sandbox'});
+   }
+   requireAuth(session);
+   if(!['GET','HEAD'].includes(req.method))protect(req,session);
+   if(req.method==='POST'&&path==='/auth/logout'){
+    svc.revokeSession(getCookies(req).osx_session,id);return send(res,200,{ok:true},{'set-cookie':cookieVal('',true)});
+   }
+   if(req.method==='GET'&&path==='/compliance/status')return send(res,200,{ok:true,...svc.complianceStatus(id)});
+   if(req.method==='POST'&&path==='/compliance/email/request'){
+    rateLimit(ipOf(req),'email-request:'+id,5);
+    const testMode=!prod&&emailTestMode===true;
+    const result=svc.verificationChallenge(id,{testMode,deliveryMode:!!mailUrl&&!!mailSecret});
+    if(testMode||result.alreadyVerified)return send(res,200,{ok:true,...result});
+    const email=session.user.email;
+    await deliverVerificationEmail({url:mailUrl,secret:mailSecret,email,token:result.transportToken,fetchFn:mailFetch});
+    return send(res,200,{ok:true,delivered:true,expiresAt:result.expiresAt,delivery:'OUTBOUND_SIGNED'});
+   }
+   if(req.method==='POST'&&path==='/compliance/payout/tax')return send(res,200,{ok:true,...svc.taxAttestation(id,await jsonBody(req))});
+   if(req.method==='POST'&&path==='/compliance/payout/terms')return send(res,200,{ok:true,...svc.acceptPayoutTerms(id,await jsonBody(req))});
+   let exportRoute=path.match(/^\/admin\/payouts\/([\w-]+)\/export\/(issue|read|revoke)$/);
+   if(req.method==='POST'&&exportRoute){const b=await jsonBody(req);
+    const requestId=exportRoute[1];const op=exportRoute[2];
+    const response=op==='issue'?svc.issuePayoutExport(id,requestId):op==='read'?svc.readPayoutExport(id,requestId,b.readToken):svc.revokePayoutExport(id,requestId);
+    return send(res,200,{ok:true,...response});
+   }
+   if(req.method==='POST'&&path==='/compliance/consents')return send(res,200,{ok:true,...svc.acceptLegalTerms(id,await jsonBody(req))});
+   if(req.method==='POST'&&path==='/compliance/identity/request')return send(res,200,{ok:true,...svc.requestIdentityReview(id)});
+   if(req.method==='GET'&&path==='/compliance/data-export')return send(res,200,{ok:true,data:svc.selfDataExport(id)});
+   if(req.method==='POST'&&path==='/compliance/privacy/request'){const b=await jsonBody(req);return send(res,201,{ok:true,...svc.privacyRequest(id,b.kind)})}
+   let cm=path.match(/^\/admin\/compliance\/identity\/([\w-]+)\/review$/);
+   if(req.method==='POST'&&cm){const b=await jsonBody(req);return send(res,200,{ok:true,...svc.reviewIdentity(id,cm[1],b.status)})}
+   cm=path.match(/^\/admin\/payouts\/([\w-]+)\/prepare$/);
+   if(req.method==='POST'&&cm)return send(res,200,{ok:true,...svc.preparePayout(id,cm[1])});
+   if(req.method==='PATCH'&&path==='/me/locale'){const b=await jsonBody(req);return send(res,200,{ok:true,user:svc.setLocale(id,b.locale)})}
+   if(req.method==='POST'&&path==='/orgs'){
+    const b=await jsonBody(req),orgId=svc.createOrganization(id,b.name);return send(res,201,{ok:true,orgId});
+   }
+   let m=path.match(/^\/orgs\/([\w-]+)\/invite$/);
+   if(req.method==='POST'&&m){const b=await jsonBody(req);return send(res,201,{ok:true,...svc.invite(id,m[1],b.email,b.role)})}
+   if(req.method==='POST'&&path==='/invitations/accept'){const b=await jsonBody(req);return send(res,200,{ok:true,...svc.acceptInvite(id,b.token)})}
+   if(req.method==='GET'&&path==='/projects')return send(res,200,{ok:true,projects:svc.workflow.list(id,url.searchParams.get('orgId'))});
+   if(req.method==='POST'&&path==='/projects'){
+    const b=await jsonBody(req);return send(res,201,{ok:true,project:svc.workflow.launch(id,b.quoteId)});
+   }
+   if(req.method==='GET'&&path==='/projects/metrics')return send(res,200,{ok:true,metrics:svc.workflow.metrics(id,url.searchParams.get('orgId'))});
+   if(req.method==='GET'&&path==='/projects/export.csv'){
+    const rows=svc.workflow.exportRows(id,url.searchParams.get('orgId'));
+    const cell=v=>{let s=String(v??'');if(/^[\s\uFEFF]*[=+@-]|^[\t\r\n]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};
+    const cols=['id','title','client_name','status','total_cents','milestones','accepted','updated_at'];
+    const csv=[cols.join(','),...rows.map(x=>cols.map(k=>cell(x[k])).join(','))].join('\r\n')+'\r\n';
+    res.writeHead(200,{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="osmanx-projects.csv"','cache-control':'no-store'});
+    return res.end('\ufeff'+csv);
+   }
+   let wm=path.match(/^\/projects\/([\w-]+)\/milestones\/([\w-]+)\/(submit)$/);
+   if(req.method==='POST'&&wm){const b=await jsonBody(req);return send(res,200,{ok:true,project:svc.workflow.submitMilestone(id,wm[1],wm[2],b)});}
+   wm=path.match(/^\/projects\/([\w-]+)\/milestones\/([\w-]+)$/);
+   if(req.method==='PATCH'&&wm){const b=await jsonBody(req);return send(res,200,{ok:true,project:svc.workflow.updateMilestone(id,wm[1],wm[2],b)});}
+   wm=path.match(/^\/projects\/([\w-]+)\/milestones$/);
+   if(req.method==='POST'&&wm){const b=await jsonBody(req);return send(res,201,{ok:true,project:svc.workflow.createMilestone(id,wm[1],b)});}
+   wm=path.match(/^\/projects\/([\w-]+)\/shares\/([\w-]+)\/revoke$/);
+   if(req.method==='POST'&&wm)return send(res,200,{ok:true,...svc.workflow.revoke(id,wm[1],wm[2])});
+   wm=path.match(/^\/projects\/([\w-]+)\/share$/);
+   if(req.method==='POST'&&wm){const r=svc.workflow.share(id,wm[1]);return send(res,201,{ok:true,url:`${origin}/c/${r.token}`,shareId:r.shareId,expiresAt:r.expiresAt});}
+   wm=path.match(/^\/projects\/([\w-]+)$/);
+   if(req.method==='GET'&&wm)return send(res,200,{ok:true,project:svc.workflow.details(id,wm[1])});
+   if(req.method==='GET'&&path==='/quotes')return send(res,200,{ok:true,quotes:svc.listQuotes(id,url.searchParams.get('orgId'))});
+   if(req.method==='POST'&&path==='/quotes'){
+    const b=await jsonBody(req);return send(res,201,{ok:true,quote:svc.createQuote(id,b.orgId,b)});
+   }
+   m=path.match(/^\/quotes\/([\w-]+)(?:\/(share|status|print))?$/);
+   if(m){
+    const qid=m[1],op=m[2];
+    if(req.method==='GET'&&!op)return send(res,200,{ok:true,quote:svc.getQuote(id,qid)});
+    if(req.method==='PATCH'&&!op){const b=await jsonBody(req);return send(res,200,{ok:true,quote:svc.updateQuote(id,qid,b)})}
+    if(req.method==='POST'&&op==='status'){const b=await jsonBody(req);return send(res,200,{ok:true,quote:svc.quoteStatus(id,qid,b.status)})}
+    if(req.method==='POST'&&op==='share'){const result=svc.shareQuote(id,qid);return send(res,201,{ok:true,url:`${origin}/s/${result.token}`,expiresAt:result.expiresAt})}
+    if(req.method==='GET'&&op==='print'){
+     const q=svc.getQuote(id,qid);res.setHeader('referrer-policy','no-referrer');res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});return res.end(formatHtml(q));
+    }
+   }
+   if(req.method==='GET'&&path==='/subscriptions')return send(res,200,{ok:true,subscription:svc.subscriptionDeta
