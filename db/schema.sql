@@ -258,3 +258,23 @@ CREATE TABLE IF NOT EXISTS work_client_responses (
  responder_name TEXT NOT NULL, message TEXT NOT NULL, fingerprint_hash TEXT,
  created_at TEXT NOT NULL, UNIQUE(milestone_id,submission_revision)
 );
+
+-- R6: encrypted private evidence, scanner attestation and immutable delivery bindings.
+CREATE TABLE IF NOT EXISTS work_evidence (
+ id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES work_projects(id),
+ milestone_id TEXT NOT NULL REFERENCES work_milestones(id), file_name TEXT NOT NULL,
+ mime_type TEXT NOT NULL CHECK(mime_type IN ('application/pdf','image/png','image/jpeg','text/plain')),
+ size_bytes INTEGER NOT NULL CHECK(size_bytes BETWEEN 1 AND 2097152),sha256 TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'quarantined' CHECK(status IN ('quarantined','cleared','rejected')),
+ scan_engine TEXT,scanned_at TEXT,created_by TEXT NOT NULL REFERENCES users(id),created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_work_evidence_milestone ON work_evidence(milestone_id,created_at);
+CREATE TABLE IF NOT EXISTS work_submission_evidence (
+ submission_id TEXT NOT NULL REFERENCES work_submissions(id),evidence_id TEXT NOT NULL REFERENCES work_evidence(id),
+ PRIMARY KEY(submission_id,evidence_id)
+);
+CREATE TABLE IF NOT EXISTS work_acceptance_receipts (
+ id TEXT PRIMARY KEY,response_id TEXT NOT NULL UNIQUE REFERENCES work_client_responses(id),
+ submission_id TEXT NOT NULL UNIQUE REFERENCES work_submissions(id),project_id TEXT NOT NULL REFERENCES work_projects(id),
+ receipt_json TEXT NOT NULL,receipt_sha256 TEXT NOT NULL,created_at TEXT NOT NULL
+);
