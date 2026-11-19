@@ -1,0 +1,78 @@
+ken');
+  const item=one(db,'SELECT * FROM email_challenges WHERE token_hash=?',sha(raw));
+  assert(item&&item.expires_at>date()&&!item.verified_at,403,'Expired or used verification token','INVALID_TOKEN');
+  run(db,'UPDATE email_challenges SET verified_at=? WHERE user_id=?',date(),item.user_id);
+  audit(item.user_id,'email.challenge.verified',item.user_id);return {verified:true};
+ });}
+ function acceptLegalTerms(userId,{document,version,accepted}={}){return write(()=>{
+  assert(accepted===true&&document==='referral_terms'&&version==='2026-11',422,'Current legal document and consent required');
+  run(db,'INSERT OR IGNORE INTO legal_acceptances(user_id,document,version,accepted_at) VALUES(?,?,?,?)',userId,document,version,date());
+  audit(userId,'legal.accepted',userId,{document,version});return {document,version,accepted:true};
+ });}
+ function requestIdentityReview(userId){return write(()=>{
+  const previous=one(db,'SELECT status FROM identity_reviews WHERE user_id=?',userId);
+  assert(!previous||previous.status==='rejected',409,'Identity review already exists');
+  run(db,`INSERT INTO identity_reviews(user_id,status,created_at) VALUES(?,'requested',?)
+    ON CONFLICT(user_id) DO UPDATE SET status='requested',created_at=excluded.created_at,reviewed_by=NULL,reviewed_at=NULL`,userId,date());
+  audit(userId,'identity.review.requested',userId);return {status:'requested',notice:'Manual review only; no independent identity provider is connected'};
+ });}
+ function reviewIdentity(actor,target,status){return write(()=>{
+  admin(actor);assert(['approved','rejected'].includes(status),422,'Invalid review');
+  assert(actor!==target,403,'Cannot approve own identity');
+  const item=one(db,'SELECT status FROM identity_reviews WHERE user_id=?',target);
+  assert(item?.status==='requested',409,'Identity review not pending');
+  run(db,'UPDATE identity_reviews SET status=?,reviewed_by=?,reviewed_at=? WHERE user_id=?',status,actor,date(),target);
+  audit(actor,'identity.review.decided',target,{status});return {userId:target,status,verification:'MANUAL_REVIEW_ONLY'};
+ });}
+ function complianceStatus(userId){
+  const challenge=one(db,'SELECT verified_at FROM email_challenges WHERE user_id=?',userId);
+  const identity=one(db,'SELECT status FROM identity_reviews WHERE user_id=?',userId);
+  const consent=one(db,"SELECT accepted_at FROM legal_acceptances WHERE user_id=? AND document='referral_terms' AND version='2026-11'",userId);
+  const tax=one(db,'SELECT country,taxpayer_type FROM payout_tax_attestations WHERE user_id=?',userId);
+  const vendor=one(db,"SELECT 1 FROM legal_acceptances WHERE user_id=? AND document='payout_vendor_terms' AND version='DRAFT_R4'",userId);
+  return {emailVerified:!!challenge?.verified_at,identityStatus:identity?.status||'not_requested',termsAccepted:!!consent,
+   taxDeclared:!!tax,taxCountry:tax?.country||null,vendorTermsAccepted:!!vendor,realPayoutsEnabled:false};
+ }
+ function preparePayout(actor,requestId){return write(()=>{
+  admin(actor);
+  const p=one(db,'SELECT * FROM payout_requests WHERE id=?',requestId);
+  assert(p?.status==='approved',409,'Payout not approved');
+  const prev=one(db,'SELECT reviewer_id FROM payout_review_authors WHERE request_id=?',requestId);
+  assert(prev&&prev.reviewer_id!==actor&&p.user_id!==actor&&prev.reviewer_id!==p.user_id,403,'Two independent external reviewers required');
+  assert(!one(db,'SELECT 1 FROM payout_preparations WHERE request_id=?',requestId),409,'Already prepared');
+  const status=complianceStatus(p.user_id);
+  assert(status.emailVerified&&status.identityStatus==='approved'&&status.termsAccepted,409,'Payout compliance prerequisites missing','COMPLIANCE_HOLD');
+  const flagged=one(db,`SELECT 1 FROM referral_rewards r JOIN fraud_flags f ON f.buyer_id=r.buyer_id
+    WHERE r.referrer_id=? AND r.status!='void' AND f.status IN ('open','confirmed') LIMIT 1`,p.user_id);
+  assert(!flagged,409,'Referral risk not resolved','FRAUD_HOLD');
+  const id=newId();const payload={batchId:id,requestId,recipientId:p.user_id,amountCents:p.amount_cents,currency:'RUB',realTransfer:false};
+  const hash=sha(JSON.stringify(payload));
+  run(db,'INSERT INTO payout_preparations(request_id,second_reviewer_id,batch_id,digest,created_at) VALUES(?,?,?,?,?)',requestId,actor,id,hash,date());
+  audit(actor,'payout.manually_prepared',requestId,{batchId:id,digest:hash});return {...payload,digest:hash,notice:'Prepared ONLY. No bank details and no transfer; requires lawful external settlement workflow'};
+ });}
+ function privacyRequest(userId,kind){return write(()=>{
+  assert(['access','erasure'].includes(kind),422,'Invalid privacy request');
+  const open=one(db,'SELECT id FROM privacy_requests WHERE user_id=? AND kind=? AND status=?',userId,kind,'open');
+  if(open)return {id:open.id,kind,status:'open',duplicate:true};
+  const id=newId();run(db,'INSERT INTO privacy_requests(id,user_id,kind,status,created_at) VALUES(?,?,?,?,?)',id,userId,kind,'open',date());
+  audit(userId,'privacy.requested',id,{kind});return {id,kind,status:'open',notice:'Manual fulfillment after statutory retention checks'};
+ });}
+ function selfDataExport(userId){
+  const u=userById(userId);assert(u,404,'User missing');
+  return {user:u,organizations:orgs(userId),referralCode:one(db,'SELECT code FROM referral_codes WHERE user_id=?',userId)?.code,
+    legalAcceptances:all(db,'SELECT document,version,accepted_at FROM legal_acceptances WHERE user_id=?',userId),
+    privacyRequests:all(db,'SELECT id,kind,status,created_at FROM privacy_requests WHERE user_id=?',userId),
+    payouts:payoutRequests(userId),warnings:['Financial and audit records may be retained under applicable legal obligations']};
+ }
+ function adminDashboard(userId){admin(userId);
+  const count=(table)=>one(db,`SELECT count(*) AS n FROM ${table}`).n;
+  return {users:count('users'),organizations:count('organizations'),quotes:count('quotes'),payments:count('payments'),openFraud:one(db,"SELECT count(*) AS n FROM fraud_flags WHERE status='open'").n,openDisputes:one(db,"SELECT count(*) AS n FROM disputes WHERE status='open'").n,requestedPayouts:one(db,"SELECT count(*) AS n FROM payout_requests WHERE status='requested'").n,audit:verifyAudit(),ledger:verifyLedger()};
+ }
+ function adminLists(userId){admin(userId);return {fraud:all(db,"SELECT id,buyer_id,referrer_id,kind,reason,created_at FROM fraud_flags WHERE status='open' ORDER BY created_at DESC LIMIT 100"),disputes:all(db,"SELECT id,user_id,subject,detail,status,created_at FROM disputes WHERE status='open' ORDER BY created_at DESC LIMIT 100"),payouts:all(db,"SELECT id,user_id,amount_cents,status,created_at FROM payout_requests WHERE status='requested' ORDER BY created_at DESC LIMIT 100")};}
+ function auditRecent(userId,limit=50){admin(userId);return all(db,'SELECT seq,actor_user_id,action,entity_id,created_at,event_hash FROM audit_events ORDER BY seq DESC LIMIT ?',Math.min(100,Math.max(1,limit)))}
+ function setAdmin(email){return write(()=>{
+  const u=one(db,'SELECT id FROM users WHERE email=?',email.toLowerCase());assert(u,404,'Admin user not registered');run(db,'UPDATE users SET is_admin=1 WHERE id=?',u.id);audit(u.id,'admin.enabled',u.id);return u.id;
+ });}
+ const workflow=createWorkflow(db,{member,audit,clock:date});
+ return {workflow,db,clock,member,admin,orgs,isPro,setLocale,createUser,authenticate,createSession,getSession,revokeSession,createOrganization,invite,acceptInvite,createQuote,updateQuote,quoteStatus,shareQuote,quoteByShare,respondToQuote,getQuote,listQuotes,createInvoice,invoices,subscriptionDetails,changeSubscription,processPaymentEvent,recordCheckoutSession,recordProviderVerification,reconcileSettlements,settlementReports,rewards,settleRewards,requestPayout,reviewPayout,payoutRequests,createDispute,disputes,reviewDispute,reviewFraud,recheckReferral,assessReferralRisk,adminDashboard,adminLists,auditRecent,verifyAudit,verifyLedger,setAdmin,verificationChallenge,confirmEmailChallenge,acceptLegalTerms,acceptPayoutTerms,taxAttestation,issuePayoutExport,readPayoutExport,revokePayoutExport,requestIdentityReview,reviewIdentity,complianceStatus,preparePayout,privacyRequest,selfDataExport};
+}

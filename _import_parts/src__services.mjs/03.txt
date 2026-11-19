@@ -1,0 +1,133 @@
+SERT INTO disputes(id,user_id,org_id,subject,detail,created_at,updated_at) VALUES(?,?,?,?,?,?,?)',id,userId,orgId,subject,detail,date(),date());audit(userId,'dispute.created',id);return {id,status:'open'};
+ });}
+ function disputes(userId,orgId){member(userId,orgId);return all(db,'SELECT id,subject,detail,status,resolution,created_at FROM disputes WHERE org_id=? ORDER BY created_at DESC',orgId);}
+ function reviewDispute(actor,id,status,resolution){return write(()=>{
+  admin(actor);assert(['resolved','rejected'].includes(status),422,'Invalid case resolution');
+  const d=one(db,'SELECT id FROM disputes WHERE id=? AND status=?',id,'open');assert(d,409,'Dispute is not open');
+  resolution=cleanText(resolution,2000);assert(resolution.length>=5,422,'Resolution is required');
+  run(db,'UPDATE disputes SET status=?,resolution=?,updated_at=? WHERE id=?',status,resolution,date(),id);audit(actor,'dispute.reviewed',id,{status});return {id,status};
+ });}
+ function reviewFraud(actor,id,status){return write(()=>{
+  admin(actor);assert(['cleared','confirmed'].includes(status),422,'Invalid fraud decision');
+  const f=one(db,'SELECT * FROM fraud_flags WHERE id=? AND status=?',id,'open');assert(f,409,'Flag not open');
+  run(db,'UPDATE fraud_flags SET status=?,reviewed_by=?,reviewed_at=? WHERE id=?',status,actor,date(),id);
+  if(status==='confirmed'){
+   const rows=all(db,"SELECT * FROM referral_rewards WHERE buyer_id=? AND status IN ('pending','payable')",f.buyer_id);
+   for(const r of rows){
+    if(r.amount_cents)ledgerPair(`fraud.reversal:${r.id}`,`referral_liability:${r.referrer_id}`,'referral_marketing_expense',r.amount_cents);
+    run(db,"UPDATE referral_rewards SET amount_cents=0,status='void',updated_at=? WHERE id=?",date(),r.id);
+    reconcilePayoutReservations(r.referrer_id);
+   }
+  }
+  audit(actor,'fraud.reviewed',id,{status});return {id,status};
+ });}
+ function reconcileSettlements(actor,body){return write(()=>{
+  admin(actor);assert(body&&typeof body==='object',422,'Reconciliation report required');
+  const provider=cleanText(body.provider,50),reportId=cleanText(body.reportId,100);
+  assert(/^[A-Za-z0-9_.-]{2,50}$/.test(provider),422,'Provider is required');
+  assert(/^[A-Za-z0-9_.:-]{6,100}$/.test(reportId),422,'Report ID invalid');
+  const rows=body.rows;assert(Array.isArray(rows)&&rows.length<=2000,422,'Max 2000 settlement entries');
+  const keys=new Set();
+  const items=rows.map(r=>{
+   assert(r&&typeof r.externalId==='string'&&r.externalId.length>=6&&r.externalId.length<=200,422,'Invalid external payment ID');
+   assert(Number.isSafeInteger(r.amountCents)&&r.amountCents>0&&Number.isSafeInteger(r.refundedCents)&&r.refundedCents>=0&&r.refundedCents<=r.amountCents,422,'Invalid settlement amounts');
+   assert(!keys.has(r.externalId),422,'Duplicate external payment in settlement report');keys.add(r.externalId);
+   return {externalId:r.externalId,amountCents:r.amountCents,refundedCents:r.refundedCents};
+  }).sort((a,b)=>a.externalId.localeCompare(b.externalId));
+  const digest=sha(JSON.stringify({provider,reportId,items,complete:body.complete===true}));
+  const old=one(db,'SELECT id,digest,result_json FROM settlement_reports WHERE provider=? AND provider_report_id=?',provider,reportId);
+  if(old){assert(old.digest===digest,409,'Report ID was reused with different content','REPORT_COLLISION');return {...JSON.parse(old.result_json),duplicate:true};}
+  const local=all(db,`SELECT external_id,amount_cents,refunded_cents FROM payments WHERE provider=?`,provider);
+  const byLocal=new Map(local.map(x=>[x.external_id,x]));const mismatches=[];
+  for(const r of items){
+   const l=byLocal.get(r.externalId);
+   if(!l)mismatches.push({type:'missing_in_local',externalId:r.externalId});
+   else if(l.amount_cents!==r.amountCents||l.refunded_cents!==r.refundedCents)
+    mismatches.push({type:'amount_mismatch',externalId:r.externalId,localCents:l.amount_cents,reportCents:r.amountCents,localRefundedCents:l.refunded_cents,reportRefundedCents:r.refundedCents});
+  }
+  // A settlement report covers only its supplied IDs unless explicitly marked complete.
+  if(body.complete===true){for(const l of local)if(!keys.has(l.external_id))mismatches.push({type:'missing_in_report',externalId:l.external_id});}
+  const result={provider,reportId,rows:items.length,localPayments:local.length,complete:body.complete===true,
+   matched:items.length-mismatches.filter(m=>m.type!=='missing_in_report').length,mismatchCount:mismatches.length,mismatches,source:'operator_supplied_unverified_report'};
+  const id=newId();run(db,`INSERT INTO settlement_reports(id,provider,provider_report_id,digest,row_count,mismatch_count,result_json,created_by,created_at)
+   VALUES(?,?,?,?,?,?,?,?,?)`,id,provider,reportId,digest,items.length,mismatches.length,JSON.stringify(result),actor,date());
+  audit(actor,'payment.settlement.reconciled',id,{provider,reportId,mismatchCount:mismatches.length,complete:body.complete===true});return {...result,duplicate:false};
+ });}
+ function settlementReports(actor){admin(actor);return all(db,`SELECT id,provider,provider_report_id,row_count,mismatch_count,created_at FROM settlement_reports ORDER BY created_at DESC LIMIT 100`);}
+
+ function taxAttestation(userId,{country,taxpayerType,confirmed}={}){return write(()=>{
+  assert(confirmed===true&&typeof country==='string'&&/^[A-Z]{2}$/.test(country)
+   &&['individual','business'].includes(taxpayerType),422,'Valid tax declaration and explicit confirmation required');
+  const existing=one(db,'SELECT country,taxpayer_type FROM payout_tax_attestations WHERE user_id=?',userId);
+  // Changing declaration invalidates any unused export; a revoked lease can never be reissued.
+  if(existing&&(existing.country!==country||existing.taxpayer_type!==taxpayerType)){
+   run(db,'UPDATE payout_export_leases SET revoked_at=? WHERE request_id IN (SELECT id FROM payout_requests WHERE user_id=?) AND revoked_at IS NULL',date(),userId);
+  }
+  run(db,`INSERT INTO payout_tax_attestations(user_id,country,taxpayer_type,declared_at) VALUES(?,?,?,?)
+   ON CONFLICT(user_id) DO UPDATE SET country=excluded.country,taxpayer_type=excluded.taxpayer_type,declared_at=excluded.declared_at`,userId,country,taxpayerType,date());
+  audit(userId,'payout.tax.attested',userId,{country,taxpayerType,changed:!!existing});
+  return {declared:true,country,taxpayerType,notice:'Self-declaration only; external tax verification and lawful payout setup remain required'};
+ });}
+ function acceptPayoutTerms(userId,{version,accepted}={}){return write(()=>{
+  assert(version==='DRAFT_R4'&&accepted===true,422,'Explicit acceptance of current payout terms required');
+  run(db,'INSERT OR IGNORE INTO legal_acceptances(user_id,document,version,accepted_at) VALUES(?,?,?,?)',userId,'payout_vendor_terms',version,date());
+  audit(userId,'payout.vendor_terms.accepted',userId,{version});return {accepted:true,version,draft:true};
+ });}
+ function issuePayoutExport(actor,requestId){return write(()=>{
+  admin(actor);const p=one(db,'SELECT * FROM payout_requests WHERE id=?',requestId);
+  assert(p?.status==='approved',409,'Payout request not approved');
+  const prep=one(db,'SELECT * FROM payout_preparations WHERE request_id=?',requestId);
+  const first=one(db,'SELECT reviewer_id FROM payout_review_authors WHERE request_id=?',requestId);
+  assert(!one(db,'SELECT 1 FROM payout_export_leases WHERE request_id=?',requestId),409,'Export lease already issued; revoked exports cannot be reissued');
+  assert(prep?.status==='prepared',409,'Prepared payout is not active');
+  assert(prep.second_reviewer_id!==actor&&first?.reviewer_id!==actor&&p.user_id!==actor,403,'Independent third reviewer required');
+  const tax=one(db,'SELECT country,taxpayer_type FROM payout_tax_attestations WHERE user_id=?',p.user_id);
+  const consent=one(db,"SELECT 1 FROM legal_acceptances WHERE user_id=? AND document='payout_vendor_terms' AND version='DRAFT_R4'",p.user_id);
+  assert(tax&&consent,409,'Tax and vendor contract declarations missing','COMPLIANCE_HOLD');
+  const checked=complianceStatus(p.user_id);
+  assert(checked.emailVerified&&checked.identityStatus==='approved'&&checked.termsAccepted,409,'Prior compliance no longer valid');
+  const flag=one(db,`SELECT 1 FROM fraud_flags f JOIN referral_rewards r ON r.buyer_id=f.buyer_id
+    WHERE r.referrer_id=? AND f.status IN ('open','confirmed')`,p.user_id);
+  assert(!flag,409,'Risk holds prevent export');
+  const raw=token(),expiresAt=new Date(Date.parse(date())+15*60*1000).toISOString();
+  run(db,'INSERT INTO payout_export_leases(request_id,issued_by,token_hash,issued_at,expires_at) VALUES(?,?,?,?,?)',requestId,actor,sha(raw),date(),expiresAt);
+  audit(actor,'payout.export.issued',requestId,{expiresAt,transferEnabled:false,taxCountry:tax.country});
+  return {requestId,readToken:raw,expiresAt,nonPayable:true,notice:'Administrative export only; never authorizes or performs a transfer'};
+ });}
+ function readPayoutExport(actor,requestId,readToken){return write(()=>{
+  admin(actor);assert(typeof readToken==='string'&&readToken.length>=30,403,'Invalid export token');
+  const x=one(db,'SELECT * FROM payout_export_leases WHERE request_id=? AND token_hash=?',requestId,sha(readToken));
+  assert(x&&!x.revoked_at&&!x.consumed_at&&x.expires_at>date(),403,'Lease expired, revoked, consumed or invalid');
+  const prep=one(db,'SELECT * FROM payout_preparations WHERE request_id=?',requestId);
+  const p=one(db,'SELECT * FROM payout_requests WHERE id=?',requestId);
+  assert(prep?.status==='prepared'&&p?.status==='approved',409,'Prepared payout no longer valid');
+  const declaration=one(db,'SELECT country,taxpayer_type FROM payout_tax_attestations WHERE user_id=?',p.user_id);
+  assert(declaration,409,'Tax declaration missing');
+  run(db,'UPDATE payout_export_leases SET consumed_at=? WHERE request_id=?',date(),requestId);
+  audit(actor,'payout.export.consumed',requestId,{batchId:prep.batch_id,realTransfer:false});
+  return {requestId,batchId:prep.batch_id,digest:prep.digest,recipientId:p.user_id,
+   amountCents:p.amount_cents,currency:'RUB',taxCountry:declaration.country,
+   taxpayerType:declaration.taxpayer_type,realTransfer:false,bankDetailsIncluded:false,
+   draftTerms:true,notice:'This metadata is NOT a bank transfer instruction'};
+ });}
+ function revokePayoutExport(actor,requestId){return write(()=>{
+  admin(actor);const x=one(db,'SELECT * FROM payout_export_leases WHERE request_id=?',requestId);
+  assert(x,404,'Export lease not found');
+  assert(!x.revoked_at,409,'Export already revoked');
+  run(db,'UPDATE payout_export_leases SET revoked_at=? WHERE request_id=?',date(),requestId);
+  run(db,"UPDATE payout_preparations SET status='revoked',revoked_at=? WHERE request_id=? AND status='prepared'",date(),requestId);
+  audit(actor,'payout.export.revoked',requestId,{permanent:true});
+  return {revoked:true,permanent:true};
+ });}
+ function verificationChallenge(userId,{testMode=false,deliveryMode=false}={}){return write(()=>{
+  const prior=one(db,'SELECT verified_at FROM email_challenges WHERE user_id=?',userId);
+  if(prior?.verified_at)return {verified:true,alreadyVerified:true};
+  assert(testMode===true||deliveryMode===true,503,'Email delivery is not configured; verification disabled','EMAIL_DELIVERY_DISABLED');
+  const raw=token();const expiresAt=deliveryMode?new Date(Date.parse(date())+30*60*1000).toISOString():isoAddDays(date(),1);
+  run(db,`INSERT INTO email_challenges(user_id,token_hash,expires_at,issued_at,verified_at)
+   VALUES(?,?,?,?,NULL) ON CONFLICT(user_id) DO UPDATE SET token_hash=excluded.token_hash,expires_at=excluded.expires_at,issued_at=excluded.issued_at,verified_at=NULL`,userId,sha(raw),expiresAt,date());
+  audit(userId,'email.challenge.created',userId,{testOnly:true});
+  return testMode?{testToken:raw,expiresAt,delivery:'LOCAL_TEST_ONLY'}:{transportToken:raw,expiresAt,delivery:'OUTBOUND_PENDING'};
+ });}
+ function confirmEmailChallenge(raw){return write(()=>{
+  assert(typeof raw==='string'&&raw.length<=200,422,'Invalid verification to
