@@ -1,0 +1,150 @@
+import { randomBytes } from 'node:crypto';
+import { one,all,run,transaction } from './db.mjs';
+import { newId, token, sha, now, passwordHash, verifyPassword, isoAddDays, isoAddMonths, cleanText, assert, HttpError } from './security.mjs';
+import { quoteMath, invoicePrice, calculateReward, PRO_PRICE_CENTS, ledgerBalanced } from './finance.mjs';
+import { createWorkflow } from './workflow.mjs';
+
+export function createServices(db, options={}) {
+ const clock=options.clock||now;
+ const date=()=>clock();
+ const write=fn=>transaction(db,fn);
+ const userById=(id)=>one(db,'SELECT id,email,display_name,locale,is_admin,created_at FROM users WHERE id=?',id);
+ const member=(userId,orgId,allowed=['owner','editor','viewer'])=>{
+  const m=one(db,'SELECT role FROM memberships WHERE user_id=? AND org_id=?',userId,orgId);
+  assert(m&&allowed.includes(m.role),403,'Access denied','FORBIDDEN'); return m.role;
+ };
+ const admin=(userId)=>{let u=one(db,'SELECT is_admin FROM users WHERE id=?',userId);assert(u?.is_admin===1,403,'Administrator required','FORBIDDEN')};
+ function audit(actor,action,entity,metadata={}) {
+  const prev=one(db,'SELECT event_hash FROM audit_events ORDER BY seq DESC LIMIT 1')?.event_hash||'GENESIS';
+  const id=newId(), createdAt=date(), json=JSON.stringify(metadata);
+  const hash=sha([prev,id,actor||'',action,entity||'',json,createdAt].join('|'));
+  run(db,'INSERT INTO audit_events(id,actor_user_id,action,entity_id,metadata_json,prev_hash,event_hash,created_at) VALUES(?,?,?,?,?,?,?,?)',id,actor||null,action,entity||null,json,prev,hash,createdAt);
+  return hash;
+ }
+ function verifyAudit() {
+  let prev='GENESIS', checked=0;
+  for(const e of all(db,'SELECT * FROM audit_events ORDER BY seq')) {
+   const expected=sha([prev,e.id,e.actor_user_id||'',e.action,e.entity_id||'',e.metadata_json,e.created_at].join('|'));
+   if(e.prev_hash!==prev||e.event_hash!==expected) return {ok:false,checked,failedSeq:e.seq};
+   prev=e.event_hash;checked++;
+  }
+  return {ok:true,checked,lastHash:prev};
+ }
+ function postEntries(sourceKey,entries) {
+  assert(ledgerBalanced(entries),500,'Unbalanced ledger transaction','LEDGER_ERROR');
+  assert(!one(db,'SELECT id FROM ledger_transactions WHERE source_key=?',sourceKey),409,'Duplicate ledger source');
+  const id=newId();run(db,'INSERT INTO ledger_transactions(id,source_key,created_at) VALUES(?,?,?)',id,sourceKey,date());
+  for(const e of entries)run(db,'INSERT INTO ledger_entries(id,transaction_id,account,debit_cents,credit_cents) VALUES(?,?,?,?,?)',newId(),id,e.account,e.debitCents,e.creditCents);
+  return id;
+ }
+ function ledgerPair(source,debit,credit,amount){
+  if(amount===0)return;
+  postEntries(source,[{account:debit,debitCents:amount,creditCents:0},{account:credit,debitCents:0,creditCents:amount}]);
+ }
+ function verifyLedger(){
+  const rows=all(db,`SELECT t.id,t.source_key,COALESCE(SUM(e.debit_cents),0) AS debits,COALESCE(SUM(e.credit_cents),0) AS credits,COUNT(e.id) AS n
+    FROM ledger_transactions t LEFT JOIN ledger_entries e ON e.transaction_id=t.id GROUP BY t.id`);
+  const bad=rows.filter(r=>r.debits!==r.credits||r.n<2);return {ok:bad.length===0,transactions:rows.length,unbalanced:bad};
+ }
+ function orgs(userId){return all(db,'SELECT o.id,o.name,m.role,s.plan,s.active_until FROM organizations o JOIN memberships m ON m.org_id=o.id LEFT JOIN subscriptions s ON s.org_id=o.id WHERE m.user_id=? ORDER BY o.created_at',userId);}
+ function isPro(orgId){const s=one(db,'SELECT plan,active_until FROM subscriptions WHERE org_id=?',orgId);return s?.plan==='pro'&&s.active_until>date();}
+ function makeOrg(userId,name){
+  const orgId=newId();run(db,'INSERT INTO organizations(id,name,created_at) VALUES(?,?,?)',orgId,cleanText(name,100)||'Workspace',date());
+  run(db,'INSERT INTO memberships(user_id,org_id,role,created_at) VALUES(?,?,?,?)',userId,orgId,'owner',date());
+  run(db,'INSERT INTO subscriptions(org_id,plan,updated_at) VALUES(?,?,?)',orgId,'free',date());
+  audit(userId,'org.created',orgId);return orgId;
+ }
+ function createUser({email,password,name,referralCode='',ipHash=null}){
+  email=String(email||'').trim().toLowerCase(); name=cleanText(name,80);
+  assert(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=254,422,'Valid email required');
+  assert(typeof password==='string'&&password.length>=10&&password.length<=128,422,'Password must be 10–128 characters');
+  assert(name.length>=2,422,'Name too short');
+  return write(()=>{
+   assert(!one(db,'SELECT id FROM users WHERE email=?',email),409,'Email is already registered','CONFLICT');
+   const ref=referralCode?one(db,`SELECT r.user_id,u.signup_ip_hash FROM referral_codes r JOIN users u ON u.id=r.user_id WHERE r.code=?`,String(referralCode).toUpperCase()):null;
+   if(referralCode)assert(ref,422,'Referral code not found');
+   const id=newId(), inviteCode=randomBytes(6).toString('hex').toUpperCase();
+   run(db,'INSERT INTO users(id,email,display_name,password_hash,signup_ip_hash,referred_by,created_at) VALUES(?,?,?,?,?,?,?)',id,email,name,passwordHash(password),ipHash,ref?.user_id||null,date());
+   run(db,'INSERT INTO referral_codes(user_id,code,created_at) VALUES(?,?,?)',id,inviteCode,date());
+   if(ref){
+    run(db,'INSERT INTO referral_attributions(buyer_id,referrer_id,code,created_at) VALUES(?,?,?,?)',id,ref.user_id,String(referralCode).toUpperCase(),date());
+    if(ipHash&&ref.signup_ip_hash&&ipHash===ref.signup_ip_hash){
+     run(db,'INSERT INTO fraud_flags(id,buyer_id,referrer_id,kind,reason,created_at) VALUES(?,?,?,?,?,?)',newId(),id,ref.user_id,'shared_signup_network','Same network at registration; manual review required before release of rewards',date());
+    }
+   }
+   const orgId=makeOrg(id,`${name} / Workspace`);audit(id,'user.registered',id,{usedReferral:!!ref});
+   return {user:userById(id),orgId};
+  });
+ }
+ function authenticate(email,password){
+  const user=one(db,'SELECT * FROM users WHERE email=?',String(email||'').trim().toLowerCase());
+  assert(user&&verifyPassword(String(password||''),user.password_hash),401,'Invalid email or password','UNAUTHORIZED');return userById(user.id);
+ }
+ function createSession(userId){return write(()=>{
+  const secret=token(),csrf=token();
+  run(db,'INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at,created_at) VALUES(?,?,?,?,?)',sha(secret),userId,csrf,isoAddDays(date(),Number(options.sessionDays||7)),date());
+  audit(userId,'auth.login',userId);return {secret,csrf};
+ });}
+ function getSession(secret){
+  if(!secret||secret.length>200)return null;
+  const s=one(db,'SELECT * FROM sessions WHERE token_hash=? AND revoked_at IS NULL AND expires_at>?',sha(secret),date());
+  if(!s)return null;return {user:userById(s.user_id),csrf:s.csrf_token,tokenHash:s.token_hash};
+ }
+ function revokeSession(secret,userId){return write(()=>{run(db,'UPDATE sessions SET revoked_at=? WHERE token_hash=? AND user_id=?',date(),sha(secret),userId);audit(userId,'auth.logout',userId)})}
+ function setLocale(userId,locale){return write(()=>{
+  assert(['ru','en'].includes(locale),422,'Unsupported locale');
+  run(db,'UPDATE users SET locale=? WHERE id=?',locale,userId);
+  audit(userId,'user.locale',userId,{locale});return userById(userId);
+ });}
+ function createOrganization(userId,name){return write(()=>makeOrg(userId,name));}
+ function invite(userId,orgId,email,role){return write(()=>{
+  member(userId,orgId,['owner']);email=String(email||'').trim().toLowerCase();
+  assert(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),422,'Invalid invite email');
+  assert(['editor','viewer'].includes(role),422,'Invalid role');
+  const raw=token(),id=newId();run(db,'INSERT INTO invitations(id,org_id,email,role,token_hash,expires_at,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)',id,orgId,email,role,sha(raw),isoAddDays(date(),7),userId,date());audit(userId,'org.invitation',id,{orgId,role});
+  return {token:raw,expiresAt:isoAddDays(date(),7),role,email};
+ });}
+ function acceptInvite(userId,raw){return write(()=>{
+  const i=one(db,'SELECT * FROM invitations WHERE token_hash=?',sha(String(raw||'')));
+  const u=one(db,'SELECT email FROM users WHERE id=?',userId);
+  assert(i&&i.expires_at>date()&&!i.accepted_at&&i.email===u?.email,403,'Invalid or expired invite');
+  assert(!one(db,'SELECT 1 FROM memberships WHERE user_id=? AND org_id=?',userId,i.org_id),409,'Already a member');
+  run(db,'INSERT INTO memberships(user_id,org_id,role,created_at) VALUES(?,?,?,?)',userId,i.org_id,i.role,date());
+  run(db,'UPDATE invitations SET accepted_at=? WHERE id=?',date(),i.id);audit(userId,'org.invitation.accepted',i.id);return {orgId:i.org_id,role:i.role};
+ });}
+ function normalizeQuote(body){
+  const title=cleanText(body.title,140), clientName=cleanText(body.clientName,140), clientEmail=cleanText(body.clientEmail,254);
+  assert(title.length>=2,422,'Title required');
+  assert(!clientEmail||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail),422,'Invalid client email');
+  const discountCents=body.discountCents??0,taxBps=body.taxBps??0;
+  const math=quoteMath(body.items,discountCents,taxBps);
+  return {title,clientName,clientEmail,discountCents,taxBps,math};
+ }
+ function insertQuoteItems(quoteId,items){
+  for(const x of items)run(db,'INSERT INTO quote_items(id,quote_id,description,qty,unit_price_cents,unit_cost_cents,position) VALUES(?,?,?,?,?,?,?)',newId(),quoteId,x.description,x.qty,x.unitPriceCents,x.unitCostCents,x.position);
+ }
+ function getQuoteRaw(quoteId){
+  const q=one(db,'SELECT * FROM quotes WHERE id=?',quoteId);assert(q,404,'Quote not found');
+  const items=all(db,'SELECT description,qty,unit_price_cents,unit_cost_cents FROM quote_items WHERE quote_id=? ORDER BY position',quoteId).map(x=>({description:x.description,qty:x.qty,unitPriceCents:x.unit_price_cents,unitCostCents:x.unit_cost_cents}));
+  const revision=one(db,'SELECT revision FROM quote_versions WHERE quote_id=?',quoteId)?.revision||1;
+  const responses=all(db,'SELECT revision,decision,responder_name,message,created_at FROM quote_responses WHERE quote_id=? ORDER BY created_at DESC LIMIT 20',quoteId).map(r=>({revision:r.revision,decision:r.decision,responderName:r.responder_name,message:r.message,createdAt:r.created_at}));
+  return {id:q.id,orgId:q.org_id,title:q.title,clientName:q.client_name,clientEmail:q.client_email,status:q.status,revision,responses,createdAt:q.created_at,updatedAt:q.updated_at,math:quoteMath(items,q.discount_cents,q.tax_bps),items,discountCents:q.discount_cents,taxBps:q.tax_bps};
+ }
+ function getQuote(userId,id){const q=one(db,'SELECT org_id FROM quotes WHERE id=?',id);assert(q,404,'Quote not found');member(userId,q.org_id);return getQuoteRaw(id)}
+ function listQuotes(userId,orgId){member(userId,orgId);return all(db,'SELECT id,title,client_name,status,updated_at FROM quotes WHERE org_id=? ORDER BY updated_at DESC LIMIT 200',orgId);}
+ function createQuote(userId,orgId,body){return write(()=>{
+  member(userId,orgId,['owner','editor']);
+  if(!isPro(orgId)){
+   // Quota follows the owning account across free workspaces: creating a new
+   // organization must not reset the free allowance.
+   const owner=one(db,"SELECT user_id FROM memberships WHERE org_id=? AND role='owner' LIMIT 1",orgId);
+   const count=one(db,`SELECT COUNT(*) AS n FROM quotes q
+     JOIN memberships m ON m.org_id=q.org_id AND m.role='owner'
+     WHERE m.user_id=? AND q.created_at>=?`,owner.user_id,new Date(date().slice(0,7)+'-01T00:00:00.000Z').toISOString()).n;
+   assert(count<3,402,'Free plan allows 3 quotes per account per month; upgrade to Pro','FREE_LIMIT');
+  }
+  const q=normalizeQuote(body),id=newId();
+  run(db,'INSERT INTO quotes(id,org_id,created_by,title,client_name,client_email,discount_cents,tax_bps,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',id,orgId,userId,q.title,q.clientName,q.clientEmail,q.discountCents,q.taxBps,date(),date());
+  insertQuoteItems(id,q.math.lines);run(db,'INSERT INTO quote_versions(quote_id,revision) VALUES(?,1)',id);audit(userId,'quote.created',id,{orgId,totalCents:q.math.totalCents});return getQuoteRaw(id);
+ });}
+ function upda
