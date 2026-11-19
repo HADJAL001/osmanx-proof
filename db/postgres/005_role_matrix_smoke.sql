@@ -4,8 +4,8 @@
 BEGIN;
 SET LOCAL ROLE proof_app;
 SELECT set_config('app.user_id','u_alice',true);
-SELECT CASE WHEN (SELECT count(*) FROM quotes)=1 THEN 1 ELSE 1/0 END AS alice_sees_one;
-SELECT CASE WHEN (SELECT count(*) FROM organizations)=1 THEN 1 ELSE 1/0 END AS alice_sees_one_org;
+SELECT 1 / CASE WHEN (SELECT COUNT(*) FROM quotes) = 1 THEN 1 ELSE 0 END AS alice_sees_one;
+SELECT 1 / CASE WHEN (SELECT COUNT(*) FROM organizations) = 1 THEN 1 ELSE 0 END AS alice_sees_one_org;
 DO $$ BEGIN
  BEGIN
    INSERT INTO quotes(id,org_id,created_by,title,created_at,updated_at)
@@ -16,14 +16,14 @@ DO $$ BEGIN
 END $$;
 INSERT INTO quotes(id,org_id,created_by,title,created_at,updated_at)
 VALUES ('q_rls_allowed','o_alice','u_alice','same-tenant','2026-11-20','2026-11-20');
-SELECT CASE WHEN (SELECT count(*) FROM quotes)=2 THEN 1 ELSE 1/0 END AS own_insert_visible;
+SELECT 1 / CASE WHEN (SELECT COUNT(*) FROM quotes) = 2 THEN 1 ELSE 0 END AS own_insert_visible;
 ROLLBACK;
 BEGIN;
 SET LOCAL ROLE proof_app;
 SELECT set_config('app.user_id','u_bob',true);
-SELECT CASE WHEN (SELECT count(*) FROM quotes)=1 THEN 1 ELSE 1/0 END AS bob_sees_one;
+SELECT 1 / CASE WHEN (SELECT COUNT(*) FROM quotes) = 1 THEN 1 ELSE 0 END AS bob_sees_one;
 ROLLBACK;
 BEGIN;
 SET LOCAL ROLE proof_app;
-SELECT CASE WHEN (SELECT count(*) FROM quotes)=0 THEN 1 ELSE 1/0 END AS unauthenticated_zero;
+SELECT 1 / CASE WHEN (SELECT COUNT(*) FROM quotes) = 0 THEN 1 ELSE 0 END AS unauthenticated_zero;
 ROLLBACK;
