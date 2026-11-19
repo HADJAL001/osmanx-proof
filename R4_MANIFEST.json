@@ -384,4 +384,226 @@
       "path": "src/ops-encrypted.mjs",
       "bytes": 4050,
       "sha256": "0a716f63c652ff47387d1d474692b87e23623ff2855d649e032f150140b3dad8"
-   
+    },
+    {
+      "path": "src/ops.mjs",
+      "bytes": 3301,
+      "sha256": "592058ee786e9d298dee705c48869778ed71ab26a028040154b61dce8fad746c"
+    },
+    {
+      "path": "src/security.mjs",
+      "bytes": 2243,
+      "sha256": "b595b3c0e6f5562d8ef7b2505f63713452904a6df0bd2c6aa2ccfdc3602a7328"
+    },
+    {
+      "path": "src/server.mjs",
+      "bytes": 25693,
+      "sha256": "922ff8d670db505c3aab4272f20c961e19c6a58bbbcee32b050543125a3475dd"
+    },
+    {
+      "path": "src/services.mjs",
+      "bytes": 56019,
+      "sha256": "74b4c034c951065fc28c7bfe6eacdaaebe187e9774ceb320866f78dd1952cb9b"
+    },
+    {
+      "path": "src/stripe-test.mjs",
+      "bytes": 9685,
+      "sha256": "5b755c0f7b8e68568c9cf6c184287ccf0b24404c41e88dc6f84c7ce9b857c259"
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "bytes": 15607,
+      "sha256": "30340772457c28df88f989fa71f0ea9c917e7b28e9aa6cb61921ecd29bc9f4ef"
+    },
+    {
+      "path": "tests/fixtures/schema_r1.sql",
+      "bytes": 6888,
+      "sha256": "cf9c7958d5f670a08db163e970dfd1255b0a292b8dceb8725535ebf66014a317"
+    },
+    {
+      "path": "tests/fixtures/schema_r3.sql",
+      "bytes": 10853,
+      "sha256": "aaf86246fdd3385003a39d39cf1e5547c2242ee089349262cc2039270bc88a77"
+    },
+    {
+      "path": "tests/http.test.mjs",
+      "bytes": 8235,
+      "sha256": "1d6d48093b7b931b84416286ec0794621bcf6317a7ee2ab8d7ebde9c931cd814"
+    },
+    {
+      "path": "tests/r2.core.test.mjs",
+      "bytes": 11605,
+      "sha256": "aeefd9929cdf4fb53eb3e7f63323882b90af370940206e8c6edb11f47b83bc1b"
+    },
+    {
+      "path": "tests/r2.http.test.mjs",
+      "bytes": 8793,
+      "sha256": "028720d6ffc919c465472f22ad4fe3d7acb78a17826cb5b427acc3d2f2b581eb"
+    },
+    {
+      "path": "tests/r2.ops.test.mjs",
+      "bytes": 2630,
+      "sha256": "95141b8cc4a9cbfc1e9170e50d93bbb130a3cc448ca82a51e0a58d79410d8685"
+    },
+    {
+      "path": "tests/r2.upgrade.test.mjs",
+      "bytes": 2621,
+      "sha256": "d872e929de369992c28634560c14056331249cc588c2929cf834e24545142618"
+    },
+    {
+      "path": "tests/r3.compliance.test.mjs",
+      "bytes": 7736,
+      "sha256": "19583aa0b8808677639fd8199ca8053bc9d84258f90e771a9f266ef4e2beed17"
+    },
+    {
+      "path": "tests/r3.http.test.mjs",
+      "bytes": 4346,
+      "sha256": "c2bb3ddac6d38fff96183e5af92c5d9f0b8320e312e951759eb906fe76671459"
+    },
+    {
+      "path": "tests/r3.migration.test.mjs",
+      "bytes": 3960,
+      "sha256": "91987dd4a407fdadeca43097c9636778bee357ca24d1e97f95964e9f0e499161"
+    },
+    {
+      "path": "tests/r3.ops.test.mjs",
+      "bytes": 4235,
+      "sha256": "86c45a15e1db9e38421b8f365fe2e3616ef927b403c3d5f9ae42bb558e5a6f0d"
+    },
+    {
+      "path": "tests/r3.stripe.test.mjs",
+      "bytes": 8551,
+      "sha256": "bcbe52e29ce1da6d8afac67f4fa1c7dba88f9e59bdd5178ac7ebf48b8b261c63"
+    },
+    {
+      "path": "tests/r4.checkout.test.mjs",
+      "bytes": 9824,
+      "sha256": "9d6ba72e3813eb81e9116a1c1217b1da1e35fb7b9e1675cb0fce73ca03dd1481"
+    },
+    {
+      "path": "tests/r4.frontend.test.mjs",
+      "bytes": 3523,
+      "sha256": "b964191ca44234c40cf78d0aec53437aae8217759b285e53845990e9260c8029"
+    },
+    {
+      "path": "tests/r4.ops.test.mjs",
+      "bytes": 5944,
+      "sha256": "10a9072deff0e84ae8068a75aebfed75c1608218145d2e39750500234b0aa4f5"
+    },
+    {
+      "path": "tests/r4.payout.test.mjs",
+      "bytes": 9712,
+      "sha256": "4d7c271b56ae60965f42bf22a54ef2a46c86303e089f6c7120cd736882ba2dd8"
+    },
+    {
+      "path": "tests/r4.postgres.test.mjs",
+      "bytes": 6156,
+      "sha256": "4e5f8c11f3c238eb8515ada1f7accd752b6f6a7713f3d3f28851368c9429c9c4"
+    },
+    {
+      "path": "tests/r4.upgrade.test.mjs",
+      "bytes": 2479,
+      "sha256": "8d86fad46f6d343a2f5a5e6bbc72b4a9278f091989b381d1f6148406549e8ea9"
+    },
+    {
+      "path": "web-next/.env.example",
+      "bytes": 335,
+      "sha256": "df0ec509f16d7cb2ceee5daa5980755322fb7510757b34f068b040ece34db67e"
+    },
+    {
+      "path": "web-next/Dockerfile",
+      "bytes": 614,
+      "sha256": "3094d2884af8d9fc3bcd4fb17f49992868b7b8490353fd23b45e0bd38780c39c"
+    },
+    {
+      "path": "web-next/app/api/proof/[...path]/route.ts",
+      "bytes": 1664,
+      "sha256": "f22533dc796fd1ede82243d8d37be4c3f30a1444d8968736599770ec401a5755"
+    },
+    {
+      "path": "web-next/app/api/public/quotes/[token]/respond/route.ts",
+      "bytes": 1433,
+      "sha256": "a831c006bb4fea88cd064ba5f688bba7b115d4b4f210b05ab3e5e189d423faa4"
+    },
+    {
+      "path": "web-next/app/globals.css",
+      "bytes": 3986,
+      "sha256": "a12c515675215b4545baf7990ed405e3ba2d582ee54fc70400ded0951d4c6386"
+    },
+    {
+      "path": "web-next/app/layout.tsx",
+      "bytes": 490,
+      "sha256": "8023af4a485bf0ccb998ab5a87a562cbcec53091e0fbfa2faaa7fdba3cffe71a"
+    },
+    {
+      "path": "web-next/app/page.tsx",
+      "bytes": 110,
+      "sha256": "90fa6d942ff2dfc149642aa72b53d21f4ff5d8707986f069b00319fbd4066312"
+    },
+    {
+      "path": "web-next/app/print.css/route.ts",
+      "bytes": 643,
+      "sha256": "8ebe178b74b84a436f211b4b0e67ff119b475fb75fcfd2270a88d136ce89e25a"
+    },
+    {
+      "path": "web-next/app/print.js/route.ts",
+      "bytes": 649,
+      "sha256": "a290ebd831469cc1173a9481471f5b526ce1e6bfc47a6b09b4d61b0433c7c1fc"
+    },
+    {
+      "path": "web-next/app/review.js/route.ts",
+      "bytes": 650,
+      "sha256": "024899ec7320b34450b10a19271ea2241c3636b996e53aba5c076791fd557e29"
+    },
+    {
+      "path": "web-next/app/s/[token]/route.ts",
+      "bytes": 854,
+      "sha256": "0b446413a521813ef5c3abeeba6db0d45bfc64d9e91955371a9f40a7280566c5"
+    },
+    {
+      "path": "web-next/components/WorkspaceApp.tsx",
+      "bytes": 19954,
+      "sha256": "d97b9cffd773224cd72f8deaf0f7cddee3edc688d03464286d444963e7d69d68"
+    },
+    {
+      "path": "web-next/lib/api.ts",
+      "bytes": 781,
+      "sha256": "261320980b4d96873717d0f212b99512cfc3af5327ffe6d9f9dbc00f1241c48b"
+    },
+    {
+      "path": "web-next/lib/finance.ts",
+      "bytes": 3511,
+      "sha256": "44ad9805061fddec9e59c8b9ef642c3f7e27d295622057d9149e105348d8c8d1"
+    },
+    {
+      "path": "web-next/lib/proxy-policy.mjs",
+      "bytes": 750,
+      "sha256": "16e567155b6c0517df7efc4cad9eca2b236f00b3562eb1da41e9d4a27c7c2689"
+    },
+    {
+      "path": "web-next/next-env.d.ts",
+      "bytes": 128,
+      "sha256": "c61315ba22f7b6b5ae6a777ca3a623e0645f6305a2300ad852b1fefa6655a442"
+    },
+    {
+      "path": "web-next/next.config.mjs",
+      "bytes": 514,
+      "sha256": "a330804587af84587662575a7f0e2c5a19e088d6330c6579077dd1c909eb5f82"
+    },
+    {
+      "path": "web-next/package.json",
+      "bytes": 512,
+      "sha256": "e3e4aae39573304a11b3974dc3407cb22cd9aacafe4a7880e47f78f0d784a324"
+    },
+    {
+      "path": "web-next/public/.keep",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "web-next/tsconfig.json",
+      "bytes": 447,
+      "sha256": "70e90b3484e2e9061e18194953c21bf27a23b4cb767e051e841e5c96a5fe2193"
+    }
+  ]
+}
