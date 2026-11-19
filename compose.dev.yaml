@@ -1,0 +1,15 @@
+services:
+  proof-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - proof_dev_data:/app/data
+    environment:
+      - NODE_ENV=development
+      - PAYMENT_MODE=sandbox
+      - APP_ORIGIN=http://127.0.0.1:3100
+volumes:
+  proof_dev_data:

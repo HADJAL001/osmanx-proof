@@ -1,0 +1,18 @@
+# Internal staging only. Do NOT publish publicly without HTTPS + secrets + regulatory review.
+services:
+  proof:
+    build: .
+    ports:
+      - '127.0.0.1:3100:3100'
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3100
+      PAYMENT_MODE: disabled
+      DATABASE_PATH: /app/data/proof.sqlite
+      APP_ORIGIN: http://127.0.0.1:3100
+    volumes:
+      - proof-data:/app/data
+    restart: unless-stopped
+volumes:
+  proof-data:

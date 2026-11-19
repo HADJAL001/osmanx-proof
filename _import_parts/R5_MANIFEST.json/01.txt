@@ -1,0 +1,351 @@
+th": "qa/visual_08_client_approval_desktop.png",
+      "sha256": "2ba9393dd7eb2073b322a3cc2d6a33b31593fa870a75c53fb393ea96b8073bd5",
+      "size": 103052
+    },
+    {
+      "path": "qa/visual_09_client_approval_mobile.png",
+      "sha256": "20b07b6dd9d6430f37aab7c9517277069b39a362d6e1d623db5fb2fc64ed95d2",
+      "size": 103957
+    },
+    {
+      "path": "qa/visual_mock_qa.py",
+      "sha256": "5d8792b62e6fc54afc5f2ee2de45b25c25c07dc5adb7a42da8295aadf1827930",
+      "size": 3495
+    },
+    {
+      "path": "qa/visual_results.json",
+      "sha256": "e71f483d57bf76ecf1ccbcb5b9c9da310c87bcdba43c800d4c02d42b47751678",
+      "size": 433
+    },
+    {
+      "path": "scripts/r4-encrypted-drill.mjs",
+      "sha256": "73ae6f59bf7f08ca9e5a2c09b32eb0aacdc21938340949ac29ac92afda1faad7",
+      "size": 1178
+    },
+    {
+      "path": "scripts/r4-load-smoke.mjs",
+      "sha256": "aa90f45bb15dedaab780a02be535a5e4affa43d57142edf46e96aa99c12a25d5",
+      "size": 1737
+    },
+    {
+      "path": "scripts/r4-release-gate.mjs",
+      "sha256": "77cce667a265717ff60603b7d7f6e492e771c9e7b4a8753d3f174bbfea4a7083",
+      "size": 2223
+    },
+    {
+      "path": "scripts/r5-local-acceptance.mjs",
+      "sha256": "7a69b4769fe10fdf4d161c4007dd25e1c5491a2e6640b78cfc9a15d949210fd8",
+      "size": 4124
+    },
+    {
+      "path": "scripts/r5-release-gate.mjs",
+      "sha256": "fec390150486f1f86c3ea0eb26582322a20a825ff7bec310238dca5ba59e273c",
+      "size": 2830
+    },
+    {
+      "path": "scripts/recovery-drill.mjs",
+      "sha256": "76cf644592a41b28450d6543d717bcc64f447efd7ac7ba3c049992f56384f008",
+      "size": 873
+    },
+    {
+      "path": "scripts/staging-preflight.mjs",
+      "sha256": "d2dee311e42316f661f63b56024494380e7b7637c3b1c3287ad6a6bc81cad1b8",
+      "size": 1216
+    },
+    {
+      "path": "src/admin-cli.mjs",
+      "sha256": "20898fa625ea77abbc0fc236b324e76f5b808dd909b7fd574f70bbad6573fc3f",
+      "size": 372
+    },
+    {
+      "path": "src/db.mjs",
+      "sha256": "c3ddb608c99652a84e96766017a59649f47dbeafe00c1f5e9c46e1ddc58816f7",
+      "size": 1053
+    },
+    {
+      "path": "src/email-delivery.mjs",
+      "sha256": "a2895aba10d8b08434e9611ddd7c53c588d1da0ab2f65f495bbe086979f483bd",
+      "size": 1529
+    },
+    {
+      "path": "src/finance.mjs",
+      "sha256": "a2f9516c3fcb058cd0acfd20728eaf91314bd816adc658ad22090a6b19684f07",
+      "size": 2615
+    },
+    {
+      "path": "src/metrics.mjs",
+      "sha256": "50b388d9dee77d3f41eb2cfdc11d5a87d78932eda37b39b0c052d66b892e8f8f",
+      "size": 1865
+    },
+    {
+      "path": "src/ops-cli.mjs",
+      "sha256": "695f67908692243c9e87301834c50a0db2f50f21aecc140ed882012d7b4774aa",
+      "size": 799
+    },
+    {
+      "path": "src/ops-encrypted.mjs",
+      "sha256": "0a716f63c652ff47387d1d474692b87e23623ff2855d649e032f150140b3dad8",
+      "size": 4050
+    },
+    {
+      "path": "src/ops.mjs",
+      "sha256": "592058ee786e9d298dee705c48869778ed71ab26a028040154b61dce8fad746c",
+      "size": 3301
+    },
+    {
+      "path": "src/security.mjs",
+      "sha256": "b595b3c0e6f5562d8ef7b2505f63713452904a6df0bd2c6aa2ccfdc3602a7328",
+      "size": 2243
+    },
+    {
+      "path": "src/server.mjs",
+      "sha256": "b96db63f49b21ef19c211b02e319d86df28eabb1b521dd6e8f12be73a23fa5a0",
+      "size": 31676
+    },
+    {
+      "path": "src/services.mjs",
+      "sha256": "0d716ab85105807988d8a83ea8c0100bb8c1ad58ed110e50322f17c44a9ae34e",
+      "size": 56139
+    },
+    {
+      "path": "src/stripe-test.mjs",
+      "sha256": "5b755c0f7b8e68568c9cf6c184287ccf0b24404c41e88dc6f84c7ce9b857c259",
+      "size": 9685
+    },
+    {
+      "path": "src/workflow.mjs",
+      "sha256": "660fac1dea96511b28f3762b4369459938e27a0c91cadb76593d7c3cb2239bb0",
+      "size": 12952
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "sha256": "30340772457c28df88f989fa71f0ea9c917e7b28e9aa6cb61921ecd29bc9f4ef",
+      "size": 15607
+    },
+    {
+      "path": "tests/fixtures/schema_r1.sql",
+      "sha256": "cf9c7958d5f670a08db163e970dfd1255b0a292b8dceb8725535ebf66014a317",
+      "size": 6888
+    },
+    {
+      "path": "tests/fixtures/schema_r3.sql",
+      "sha256": "aaf86246fdd3385003a39d39cf1e5547c2242ee089349262cc2039270bc88a77",
+      "size": 10853
+    },
+    {
+      "path": "tests/http.test.mjs",
+      "sha256": "1d6d48093b7b931b84416286ec0794621bcf6317a7ee2ab8d7ebde9c931cd814",
+      "size": 8235
+    },
+    {
+      "path": "tests/r2.core.test.mjs",
+      "sha256": "aeefd9929cdf4fb53eb3e7f63323882b90af370940206e8c6edb11f47b83bc1b",
+      "size": 11605
+    },
+    {
+      "path": "tests/r2.http.test.mjs",
+      "sha256": "028720d6ffc919c465472f22ad4fe3d7acb78a17826cb5b427acc3d2f2b581eb",
+      "size": 8793
+    },
+    {
+      "path": "tests/r2.ops.test.mjs",
+      "sha256": "95141b8cc4a9cbfc1e9170e50d93bbb130a3cc448ca82a51e0a58d79410d8685",
+      "size": 2630
+    },
+    {
+      "path": "tests/r2.upgrade.test.mjs",
+      "sha256": "d872e929de369992c28634560c14056331249cc588c2929cf834e24545142618",
+      "size": 2621
+    },
+    {
+      "path": "tests/r3.compliance.test.mjs",
+      "sha256": "19583aa0b8808677639fd8199ca8053bc9d84258f90e771a9f266ef4e2beed17",
+      "size": 7736
+    },
+    {
+      "path": "tests/r3.http.test.mjs",
+      "sha256": "c2bb3ddac6d38fff96183e5af92c5d9f0b8320e312e951759eb906fe76671459",
+      "size": 4346
+    },
+    {
+      "path": "tests/r3.migration.test.mjs",
+      "sha256": "91987dd4a407fdadeca43097c9636778bee357ca24d1e97f95964e9f0e499161",
+      "size": 3960
+    },
+    {
+      "path": "tests/r3.ops.test.mjs",
+      "sha256": "86c45a15e1db9e38421b8f365fe2e3616ef927b403c3d5f9ae42bb558e5a6f0d",
+      "size": 4235
+    },
+    {
+      "path": "tests/r3.stripe.test.mjs",
+      "sha256": "bcbe52e29ce1da6d8afac67f4fa1c7dba88f9e59bdd5178ac7ebf48b8b261c63",
+      "size": 8551
+    },
+    {
+      "path": "tests/r4.checkout.test.mjs",
+      "sha256": "9d6ba72e3813eb81e9116a1c1217b1da1e35fb7b9e1675cb0fce73ca03dd1481",
+      "size": 9824
+    },
+    {
+      "path": "tests/r4.frontend.test.mjs",
+      "sha256": "b964191ca44234c40cf78d0aec53437aae8217759b285e53845990e9260c8029",
+      "size": 3523
+    },
+    {
+      "path": "tests/r4.ops.test.mjs",
+      "sha256": "10a9072deff0e84ae8068a75aebfed75c1608218145d2e39750500234b0aa4f5",
+      "size": 5944
+    },
+    {
+      "path": "tests/r4.payout.test.mjs",
+      "sha256": "4d7c271b56ae60965f42bf22a54ef2a46c86303e089f6c7120cd736882ba2dd8",
+      "size": 9712
+    },
+    {
+      "path": "tests/r4.postgres.test.mjs",
+      "sha256": "4e5f8c11f3c238eb8515ada1f7accd752b6f6a7713f3d3f28851368c9429c9c4",
+      "size": 6156
+    },
+    {
+      "path": "tests/r4.upgrade.test.mjs",
+      "sha256": "8d86fad46f6d343a2f5a5e6bbc72b4a9278f091989b381d1f6148406549e8ea9",
+      "size": 2479
+    },
+    {
+      "path": "tests/r5.http.test.mjs",
+      "sha256": "305db1f715497e0658359ee63d252cbd89aed22e0b5d44f3c143d5d8a4a2f740",
+      "size": 11828
+    },
+    {
+      "path": "tests/r5.release.test.mjs",
+      "sha256": "d12aeb33cba3faf8d4bafb998cb799fcad07cfc8957034bdefa480113b229a9d",
+      "size": 3369
+    },
+    {
+      "path": "tests/r5.workflow.test.mjs",
+      "sha256": "13688b5a519ea56e27de9b556d6b9feb03c0099c9291915a73fb75e84a4a48c4",
+      "size": 11648
+    },
+    {
+      "path": "web-next/.env.example",
+      "sha256": "df0ec509f16d7cb2ceee5daa5980755322fb7510757b34f068b040ece34db67e",
+      "size": 335
+    },
+    {
+      "path": "web-next/Dockerfile",
+      "sha256": "3094d2884af8d9fc3bcd4fb17f49992868b7b8490353fd23b45e0bd38780c39c",
+      "size": 614
+    },
+    {
+      "path": "web-next/app/api/proof/[...path]/route.ts",
+      "sha256": "f22533dc796fd1ede82243d8d37be4c3f30a1444d8968736599770ec401a5755",
+      "size": 1664
+    },
+    {
+      "path": "web-next/app/api/public/projects/[token]/milestones/[milestoneId]/respond/route.ts",
+      "sha256": "8f007590111344487ee5c7079d3887d209f0646ebb5cd6f44818da4194c65773",
+      "size": 1559
+    },
+    {
+      "path": "web-next/app/api/public/quotes/[token]/respond/route.ts",
+      "sha256": "a831c006bb4fea88cd064ba5f688bba7b115d4b4f210b05ab3e5e189d423faa4",
+      "size": 1433
+    },
+    {
+      "path": "web-next/app/c/[token]/route.ts",
+      "sha256": "fa0da97395d9546dd5fdad50d8d837929b3b9df7ba876b540ebc9c265ddc56cc",
+      "size": 912
+    },
+    {
+      "path": "web-next/app/client.css/route.ts",
+      "sha256": "a94c44dea52ab92f440dc22f3a79ad8b8a773d54b9792cd24f4925b9667b67e2",
+      "size": 631
+    },
+    {
+      "path": "web-next/app/client.js/route.ts",
+      "sha256": "d71dabaa343db921faafc002e9764fdd03eef062b679ac08374de89c84717f1b",
+      "size": 637
+    },
+    {
+      "path": "web-next/app/globals.css",
+      "sha256": "a12c515675215b4545baf7990ed405e3ba2d582ee54fc70400ded0951d4c6386",
+      "size": 3986
+    },
+    {
+      "path": "web-next/app/layout.tsx",
+      "sha256": "8023af4a485bf0ccb998ab5a87a562cbcec53091e0fbfa2faaa7fdba3cffe71a",
+      "size": 490
+    },
+    {
+      "path": "web-next/app/page.tsx",
+      "sha256": "90fa6d942ff2dfc149642aa72b53d21f4ff5d8707986f069b00319fbd4066312",
+      "size": 110
+    },
+    {
+      "path": "web-next/app/print.css/route.ts",
+      "sha256": "8ebe178b74b84a436f211b4b0e67ff119b475fb75fcfd2270a88d136ce89e25a",
+      "size": 643
+    },
+    {
+      "path": "web-next/app/print.js/route.ts",
+      "sha256": "a290ebd831469cc1173a9481471f5b526ce1e6bfc47a6b09b4d61b0433c7c1fc",
+      "size": 649
+    },
+    {
+      "path": "web-next/app/review.js/route.ts",
+      "sha256": "024899ec7320b34450b10a19271ea2241c3636b996e53aba5c076791fd557e29",
+      "size": 650
+    },
+    {
+      "path": "web-next/app/s/[token]/route.ts",
+      "sha256": "0b446413a521813ef5c3abeeba6db0d45bfc64d9e91955371a9f40a7280566c5",
+      "size": 854
+    },
+    {
+      "path": "web-next/components/WorkspaceApp.tsx",
+      "sha256": "1b95b7f4359fef57ebbf36b896f3e11f448adc17020ff8c2d6af0505d5d583e5",
+      "size": 26550
+    },
+    {
+      "path": "web-next/lib/api.ts",
+      "sha256": "261320980b4d96873717d0f212b99512cfc3af5327ffe6d9f9dbc00f1241c48b",
+      "size": 781
+    },
+    {
+      "path": "web-next/lib/finance.ts",
+      "sha256": "44ad9805061fddec9e59c8b9ef642c3f7e27d295622057d9149e105348d8c8d1",
+      "size": 3511
+    },
+    {
+      "path": "web-next/lib/proxy-policy.mjs",
+      "sha256": "16e567155b6c0517df7efc4cad9eca2b236f00b3562eb1da41e9d4a27c7c2689",
+      "size": 750
+    },
+    {
+      "path": "web-next/next-env.d.ts",
+      "sha256": "c61315ba22f7b6b5ae6a777ca3a623e0645f6305a2300ad852b1fefa6655a442",
+      "size": 128
+    },
+    {
+      "path": "web-next/next.config.mjs",
+      "sha256": "a330804587af84587662575a7f0e2c5a19e088d6330c6579077dd1c909eb5f82",
+      "size": 514
+    },
+    {
+      "path": "web-next/package.json",
+      "sha256": "2ed304d2a77df102fd6e520d5388b18b488985fa78d0039bb181b2638347aa59",
+      "size": 512
+    },
+    {
+      "path": "web-next/public/.keep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "web-next/tsconfig.json",
+      "sha256": "70e90b3484e2e9061e18194953c21bf27a23b4cb767e051e841e5c96a5fe2193",
+      "size": 447
+    }
+  ]
+}
