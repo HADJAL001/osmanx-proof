@@ -1,5 +1,5 @@
-import {safeCheckoutUrl} from '../lib/proxy-policy.mjs';
 'use client';
+import {safeCheckoutUrl} from '../lib/proxy-policy.mjs';
 import { useCallback,useEffect,useMemo,useState } from 'react';
 import {centsToRub,labels,quoteTotals,type Locale,type QuoteDraft,type QuoteSummary,type SessionPayload,type Workspace} from '../lib/finance';
 import {proofApi} from '../lib/api';
