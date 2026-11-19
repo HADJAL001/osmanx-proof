@@ -1,0 +1,105 @@
+import http from 'node:http';
+import { isIP } from 'node:net';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createHmac, randomBytes } from 'node:crypto';
+import { openDatabase } from './db.mjs';
+import { createServices } from './services.mjs';
+import { HttpError, assert, sha, verifyWebhook, signWebhook, cleanText } from './security.mjs';
+import { PRO_PRICE_CENTS } from './finance.mjs';
+import { verifyStripeSignature, mapStripeTestEvent, createStripeTestIntent, createStripeTestCheckout, verifyStripeTestSettlement } from './stripe-test.mjs';
+import { createMetrics, secureMetricsToken } from './metrics.mjs';
+import {deliverVerificationEmail} from './email-delivery.mjs';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const readPublic=name=>readFileSync(resolve(root,'public',name));
+const css=readPublic('styles.css'),js=readPublic('app.js'),index=readPublic('index.html'),printCss=readPublic('print.css'),printJs=readPublic('print.js'),reviewJs=readPublic('review.js'),clientCss=readPublic('client.css'),clientJs=readPublic('client.js');
+const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=c=>(c/100).toLocaleString('ru-RU',{style:'currency',currency:'RUB'});
+const formatClient=(p)=>`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow"><title>${escapeHTML(p.title)} — OSMANX PROOF</title><link rel="stylesheet" href="/client.css"><script defer src="/client.js"></script></head><body><div class="page"><header><strong>OSMANX <span>PROOF</span></strong><small>CLIENT WORK PORTAL · R5</small></header><section class="hero"><div class="eyebrow">ПРОГРЕСС ВЫПОЛНЕНИЯ / WORK PROGRESS</div><h1>${escapeHTML(p.title)}</h1><p>Заказчик / Client: ${escapeHTML(p.clientName)}</p><div class="chip">${escapeHTML(p.status)}</div></section><main>${p.milestones.map(m=>`<article class="milestone"><div class="line"><h2>${escapeHTML(m.title)}</h2><span class="chip">${escapeHTML(m.status)}</span></div><p>${escapeHTML(m.description)}</p>${m.submittedSummary?`<div class="submission"><strong>Представленный результат / Submitted work</strong><p>${escapeHTML(m.submittedSummary)}</p></div>`:''}${m.status==='submitted'?`<form data-milestone="${m.id}"><input type="hidden" name="submissionRevision" value="${m.submittedRevision}"><label>Ваше имя / Your name<input name="name" maxlength="120" required></label><label>Комментарий / Message<textarea name="message" maxlength="1600"></textarea></label><label class="checkbox"><input type="checkbox" name="consent" required> Подтверждаю запись ответа / I agree to record my response</label><div class="actions"><button data-decision="accepted" type="submit">Принять этап / Accept</button><button data-decision="changes_requested" type="submit" class="alt">Запросить правки / Changes</button></div><p role="status" class="result"></p></form>`:''}</article>`).join('')||'<p>Этапов пока нет / No milestones yet</p>'}</main><footer>Ответ подтверждается по временной ссылке и не является квалифицированной электронной подписью. <span>/ This is not a verified legal signature.</span></footer></div></body></html>`;
+const formatHtml=(q,{clientReview=false}={})=>{
+ const lines=q.items.map(i=>`<tr><td>${escapeHTML(i.description)}</td><td>${i.qty}</td><td>${money(i.unitPriceCents)}</td><td>${money(i.qty*i.unitPriceCents)}</td></tr>`).join('');
+ return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeHTML(q.title)} — OSMANX PROOF</title><link rel="stylesheet" href="/print.css"><script defer src="/print.js"></script></head><body><p class="muted">OSMANX PROOF · COMMERCIAL OFFER</p><h1>${escapeHTML(q.title)}</h1><p>Клиент: ${escapeHTML(q.clientName||'—')}</p><p class="muted">Предложение № ${escapeHTML(q.id.slice(0,8).toUpperCase())} · ${escapeHTML(q.createdAt.slice(0,10))}</p><table><thead><tr><th>Услуга</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>${lines}</tbody></table><div class="summary"><p>Подытог: ${money(q.math.subtotalCents)}</p><p>Скидка: ${money(q.math.discountCents)}</p><p>Налог: ${money(q.math.taxCents)}</p><h2>Итого: ${money(q.math.totalCents)}</h2></div><p class="muted">Предложение подготовлено с помощью OSMANX PROOF. Подтверждение условий производится непосредственно сторонами.</p><button class="print" id="print-button">Печать / Сохранить PDF</button>${clientReview?`<section class="review" id="review"><h2>Ответ на предложение / Proposal response</h2><p class="muted">Нажатие фиксирует ответ на версию предложения № ${q.revision}. Это подтверждение по ссылке, а не проверенная электронная подпись.</p><label>Имя / Name<input id="respond-name" maxlength="120" required placeholder="Ваше имя"></label><label>Комментарий / Message<textarea id="respond-message" maxlength="1600" placeholder="Что нужно изменить?"></textarea></label><label class="consent"><input type="checkbox" id="respond-consent"> Я подтверждаю свой ответ и понимаю, что он будет сохранён / I consent to record this response</label><div class="review-actions"><button type="button" id="respond-accept">Принять / Accept</button><button type="button" id="respond-changes">Запросить изменения / Request changes</button></div><p id="respond-feedback" role="status"></p></section><script defer src="/review.js"></script>`:''}</body></html>`;
+};
+export function createHttpServer(options={}){
+ const db=options.db||openDatabase(options.dbPath);
+ const svc=options.svc||createServices(db,options);
+ const mode=options.mode||process.env.PAYMENT_MODE||(process.env.NODE_ENV==='production'?'disabled':'sandbox');
+ const origin=options.origin||process.env.APP_ORIGIN||'http://127.0.0.1:3100';
+ const prod=(options.production??(process.env.NODE_ENV==='production'));
+ const secret=options.webhookSecret||process.env.WEBHOOK_SECRET||'';
+ const ipSecret=options.ipSecret||process.env.IP_HASH_SECRET||'development-not-secret';
+ const stripeWebhookSecret=options.stripeWebhookSecret||process.env.STRIPE_TEST_WEBHOOK_SECRET||'';
+ const stripeSecretKey=options.stripeSecretKey||process.env.STRIPE_TEST_SECRET_KEY||'';
+ const stripeFetch=options.stripeFetch||fetch;
+ const metricsSecret=options.metricsSecret||process.env.METRICS_SECRET||'';
+ const metrics=createMetrics();
+ const emailTestMode=options.emailTestMode??(process.env.EMAIL_TEST_MODE==='1');
+ const mailUrl=options.emailDeliveryUrl||process.env.MAIL_DELIVERY_URL||'';
+ const mailSecret=options.emailDeliverySecret||process.env.MAIL_DELIVERY_SECRET||'';
+ const mailFetch=options.emailFetch||fetch;
+ const trustedProxies=new Set(String(options.trustedProxyIps??process.env.TRUSTED_PROXY_IPS??'').split(',').map(s=>s.trim()).filter(s=>isIP(s)));
+ const localRate=new Map();
+ const maxLimit=80;
+ if(prod&&['sandbox','stripe_test'].includes(mode))throw Error('Sandbox and Stripe TEST payments are forbidden in production');
+ if(prod&&!origin.startsWith('https://'))throw Error('Production APP_ORIGIN must use HTTPS');
+ if(prod&&ipSecret.length<32)throw Error('IP_HASH_SECRET must contain at least 32 characters in production');
+ if(prod&&mode==='bridge'&&secret.length<32)throw Error('WEBHOOK_SECRET must contain at least 32 characters');
+ function rateLimit(ip,key,limit=15){
+  const k=`${key}:${ip}`,t=Date.now(),r=localRate.get(k)||{count:0,until:t+60000};if(t>r.until){r.count=0;r.until=t+60000}r.count++;localRate.set(k,r);
+  assert(r.count<=limit,429,'Too many requests. Try again shortly','RATE_LIMIT');
+  if(localRate.size>10000){for(const [x,v] of localRate)if(v.until<t)localRate.delete(x);}
+ }
+ const send=(res,status,data,headers={})=>{
+  const body=JSON.stringify(data);res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers});res.end(body);
+ };
+ const file=(res,body,type)=>{res.writeHead(200,{'content-type':type,'cache-control':'public,max-age=300'});res.end(body)};
+ const getCookies=req=>Object.fromEntries((req.headers.cookie||'').split(';').filter(Boolean).map(s=>{let at=s.indexOf('=');return [s.slice(0,at).trim(),s.slice(at+1).trim()]}));
+ const rawBody=async(req,max=65536)=>{let chunks=[],size=0;for await(const chunk of req){size+=chunk.length;if(size>max)throw new HttpError(413,'Request too large');chunks.push(chunk)}return Buffer.concat(chunks).toString('utf8');};
+ const jsonBody=async(req,max=65536)=>{
+  assert((req.headers['content-type']||'').startsWith('application/json'),415,'Content-Type must be application/json');
+  const raw=await rawBody(req,max);let data;try{data=JSON.parse(raw)}catch{throw new HttpError(400,'Malformed JSON')};
+  assert(data&&typeof data==='object'&&!Array.isArray(data),422,'JSON object required');return data;
+ };
+ function cookieVal(value,remove=false){
+  const parts=[`osx_session=${remove?'':value}`,'Path=/','HttpOnly','SameSite=Lax',remove?'Max-Age=0':`Max-Age=${7*24*3600}`];
+  if(prod)parts.push('Secure');return parts.join('; ');
+ }
+ function ipOf(req){
+  const peer=req.socket.remoteAddress||'unknown';
+  if(!trustedProxies.has(peer))return peer; // Never trust client-supplied X-Forwarded-For directly.
+  const forwarded=String(req.headers['x-forwarded-for']||'').split(',').map(s=>s.trim());
+  for(let i=forwarded.length-1;i>=0;i--){const ip=forwarded[i];if(isIP(ip)&&!trustedProxies.has(ip))return ip;}
+  return peer;
+ }
+ function sessionOf(req){return svc.getSession(getCookies(req).osx_session||'');}
+ function requireAuth(session){assert(session?.user,401,'Please sign in','UNAUTHORIZED');return session.user.id}
+ function protect(req,session){
+  const src=req.headers.origin;
+  if(src&&src!==origin)throw new HttpError(403,'Cross-origin request blocked','ORIGIN');
+  if(session){assert(req.headers['x-csrf-token']===session.csrf,403,'CSRF token mismatch','CSRF');}
+ }
+ const adminRoute=(id)=>svc.admin(id);
+ const server=http.createServer(async(req,res)=>{
+  const startPath=(req.url||'/').split('?')[0];
+  const started=process.hrtime.bigint();
+  res.once('finish',()=>metrics.observe(req.method||'OTHER',startPath,res.statusCode,Number(process.hrtime.bigint()-started)/1e6));
+  res.setHeader('x-content-type-options','nosniff');res.setHeader('referrer-policy','strict-origin-when-cross-origin');
+  res.setHeader('x-frame-options','DENY');res.setHeader('permissions-policy','camera=(),microphone=(),geolocation=()');
+  res.setHeader('content-security-policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  try{
+   if(req.method==='GET'&&startPath==='/ops/metrics'){
+    assert(secureMetricsToken(req.headers.authorization,metricsSecret),401,'Metrics token required','UNAUTHORIZED');
+    res.writeHead(200,{'content-type':'text/plain; version=0.0.4; charset=utf-8','cache-control':'no-store'});
+    return res.end(metrics.prometheus());
+   }
+   if(req.method==='GET'&&startPath==='/health')return send(res,200,{ok:true,service:'OSMANX PROOF R5',status:'up'});
+   if(req.method==='GET'&&startPath==='/ready'){
+    const dbOk=db.prepare('PRAGMA quick_check').get().quick_check==='ok';
+    const ledger=svc.verifyLedger(),audit=svc.verifyAudit();
+    return send(res,dbOk&&ledger.ok&&audit.ok?200:503,{ready:dbOk&&ledger.ok&&audit.ok,dbOk,ledgerOk:ledger.ok,auditOk:audit.ok});
+   }
+   if(req.method==='GET'&&startPath==='/styles.css')return file(res,css,'text/css; charset=utf-8');
+   if(req.method==='GET'&&startPath==='/app.js')return file(res,js,'text/javascript; charset=utf-8');
+   if(req.method==='GET'&&startPath==='/print.css')return file(res,printCss,'text/css; charset=utf-8');
+   if(req.method==='GET'&&startPath==='/print.js
