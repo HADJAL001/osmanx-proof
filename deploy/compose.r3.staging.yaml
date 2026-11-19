@@ -1,0 +1,55 @@
+# NOT A PUBLIC PRODUCTION DEPLOYMENT. TLS and secrets must be provided outside this Compose file.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3100
+      PAYMENT_MODE: disabled
+      APP_ORIGIN: ${STAGING_ORIGIN:?Set HTTPS staging origin}
+      IP_HASH_SECRET: ${IP_HASH_SECRET:?Provide independent secret}
+      METRICS_SECRET: ${METRICS_SECRET:?Provide independent metrics secret}
+      DATABASE_PATH: /app/data/proof.sqlite
+    volumes:
+      - stage_sqlite:/app/data
+    networks: [internal]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  web:
+    build:
+      context: ../web-next
+    depends_on: [api]
+    environment:
+      BACKEND_URL: http://api:3100
+      APP_ORIGIN: ${STAGING_ORIGIN:?Set HTTPS staging origin}
+    ports: ['127.0.0.1:3000:3000']
+    networks: [internal]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  pg-migration-rehearsal:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: proof_stage
+      POSTGRES_USER: proof_stage
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:?Required staging postgres password}
+    volumes:
+      - stage_pg:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U proof_stage -d proof_stage']
+      interval: 10s
+      retries: 8
+networks:
+  internal: {internal: true}
+volumes:
+  stage_sqlite:
+  stage_pg:
