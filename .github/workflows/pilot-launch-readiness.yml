@@ -1,0 +1,29 @@
+name: OSMANX PROOF pilot readiness (R7 source only)
+on:
+  pull_request:
+  push:
+    branches:
+      - 'feature/pilot-launch-readiness'
+jobs:
+  release-gate-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+      - name: Node.js 22.16.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify R7 source inventory (not R13 claim)
+        run: node scripts/pilot-inventory.mjs --repo . --claim R7
+      - name: 35 launch gate and economics invariants
+        run: node --test --test-concurrency=2 tests/pilot-launch.test.mjs
+      - name: Test margin caps with no real payout
+        run: node scripts/pilot-economics.mjs
+      - name: Test anonymized pilot metrics
+        run: node scripts/pilot-metrics.mjs examples/pilot-20.csv
+      - name: Commercial and public beta must remain NO-GO without external evidence
+        run: node scripts/pilot-gate.mjs --repo . --stage beta --claim R7 --evidence examples/evidence-empty.json --expect-blocked
+# This workflow runs zero live transactions, does not deploy and cannot authorize real payouts.

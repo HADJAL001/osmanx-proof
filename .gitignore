@@ -42,3 +42,7 @@ dist/
 out/
 .tmp/
 tmp/
+
+# Browser/private pilot QA artifacts must never enter source control
+.pilot-browser-qa/
+.pilot-qa/

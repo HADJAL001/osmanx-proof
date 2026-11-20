@@ -1,0 +1,32 @@
+name: OSMANX PROOF audited R7 source export
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/pilot-launch-readiness
+permissions:
+  contents: read
+jobs:
+  audited-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive only Git-tracked files without .git or credentials
+        run: |
+          set -euo pipefail
+          git archive --format=zip --output=osmanx-proof-r7-source.zip HEAD
+          sha256sum osmanx-proof-r7-source.zip > osmanx-proof-r7-source.sha256
+          git rev-parse HEAD > osmanx-proof-r7-commit.txt
+          test -s osmanx-proof-r7-source.zip
+          unzip -t osmanx-proof-r7-source.zip >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osmanx-proof-r7-source-${{ github.sha }}
+          path: |
+            osmanx-proof-r7-source.zip
+            osmanx-proof-r7-source.sha256
+            osmanx-proof-r7-commit.txt
+          if-no-files-found: error
+          retention-days: 7

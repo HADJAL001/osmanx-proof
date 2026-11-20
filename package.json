@@ -26,6 +26,8 @@
     "release:gate": "node scripts/r5-release-gate.mjs",
     "drill:encrypted": "node scripts/r4-encrypted-drill.mjs",
     "acceptance:r5": "node scripts/r5-local-acceptance.mjs",
-    "pg:smoke:r5": "sh deploy/r5-postgres-test.sh"
+    "pg:smoke:r5": "sh deploy/r5-postgres-test.sh",
+    "pilot:private": "node scripts/pilot-private-launch.mjs",
+    "pilot:private:test": "node --test tests/pilot-private-launch.test.mjs"
   }
 }

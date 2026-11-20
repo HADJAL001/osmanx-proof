@@ -1,0 +1,4 @@
+lead_id,channel,qualified,proposal_sent,proposal_accepted,paid_confirmed,delivered,client_accepted,refund_cents,price_cents,delivery_cents,tax_cents,fees_cents,partner_commission_cents,test_only
+pilot001,visits,1,1,1,1,1,1,0,4000000,1800000,480000,120000,0,1
+pilot002,referral,1,1,0,0,0,0,0,0,0,0,0,0,1
+pilot003,visits,1,0,0,0,0,0,0,0,0,0,0,0,1

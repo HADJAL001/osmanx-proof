@@ -1,0 +1,10 @@
+{
+ "format":"OSMANX_PILOT_EXTERNAL_EVIDENCE_V1",
+ "nonCommercial":true,
+ "publicAccessible":false,
+ "independentReview":false,
+ "commitSha":"",
+ "realMoneyMode":false,
+ "legalApprovals":false,
+ "checks":{}
+}
