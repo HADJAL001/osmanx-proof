@@ -1,6 +1,6 @@
 // R6: private, encrypted, tenant-scoped evidence vault. All files start quarantined.
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { mkdirSync, writeFileSync, readFileSync, unlinkSync, lstatSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, unlinkSync, lstatSync, fstatSync, openSync, closeSync, constants } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 import { one, all, run, transaction } from './db.mjs';
 import { assert, newId, sha, cleanText } from './security.mjs';
@@ -85,7 +85,10 @@ export function createEvidence(db,{member,admin,audit,clock,dir,key,scannerSecre
  }
  function readDecrypted(a){enabled();const p=pathFor(a.id);
   const stat=lstatSync(p);assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.size>=28&&stat.size<=MAX_EVIDENCE_BYTES+28,409,'Invalid vault file');
-  const encrypted=readFileSync(p),nonce=encrypted.subarray(0,12),tag=encrypted.subarray(12,28),ciphertext=encrypted.subarray(28);
+  const fd=openSync(p,constants.O_RDONLY|constants.O_NOFOLLOW);let encrypted;
+  try {const st=fstatSync(fd);assert(st.isFile()&&st.size>=28&&st.size<=MAX_EVIDENCE_BYTES+28,409,'Invalid vault contents');encrypted=readFileSync(fd);}
+  finally {closeSync(fd)}
+  const nonce=encrypted.subarray(0,12),tag=encrypted.subarray(12,28),ciphertext=encrypted.subarray(28);
   let plain;
   try{const decipher=createDecipheriv('aes-256-gcm',encryptionKey,nonce);decipher.setAAD(Buffer.from(`${a.id}:${a.sha256}:${a.size_bytes}`));decipher.setAuthTag(tag);plain=Buffer.concat([decipher.update(ciphertext),decipher.final()]);}
   catch{assert(false,409,'Evidence integrity verification failed','EVIDENCE_INTEGRITY')}
@@ -112,6 +115,22 @@ export function createEvidence(db,{member,admin,audit,clock,dir,key,scannerSecre
  function evidenceForSubmission(submissionId){return all(db,`SELECT e.id,e.file_name AS fileName,e.mime_type AS mime,e.size_bytes AS size,e.sha256,e.status
   FROM work_evidence e JOIN work_submission_evidence se ON se.evidence_id=e.id WHERE se.submission_id=? ORDER BY e.id`,submissionId);
  }
+ function quarantineQueue(actor,limit=50){
+  admin(actor);
+  assert(Number.isSafeInteger(limit)&&limit>=1&&limit<=100,422,'Limit must be 1–100');
+  return all(db,`SELECT * FROM work_evidence WHERE status='quarantined' ORDER BY created_at,id LIMIT ?`,limit).map(meta);
+ }
+ function revoke(actor,projectId,id,reason){
+  const a=located(id);assert(a.project_id===projectId,404,'Evidence not found');
+  owner(actor,projectId,a.milestone_id,['owner','editor']);
+  assert(['quarantined','cleared','rejected'].includes(a.status),409,'Evidence already revoked');
+  const text=cleanText(reason,200);assert(text.length>=8,422,'Explain why access should be revoked');
+  return transaction(db,()=>{
+   run(db,"UPDATE work_evidence SET status='revoked' WHERE id=?",id);
+   audit(actor,'work.evidence.revoked',id,{projectId,reason:text,sha256:a.sha256});
+   return meta(located(id));
+  });
+ }
  function verifyStore(){enabled();let count=0;for(const a of all(db,'SELECT * FROM work_evidence')){readDecrypted(a);count++}return {ok:true,verified:count}}
- return {upload,scan,list,download,publicDownload,evidenceForSubmission,verifyStore,enabled};
+ return {upload,scan,revoke,quarantineQueue,list,download,publicDownload,evidenceForSubmission,verifyStore,enabled};
 }
