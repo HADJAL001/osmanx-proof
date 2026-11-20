@@ -1,3 +1,7 @@
+# OSMANX PROOF R7 — PARTNER 450 (test prototype)
+
+Latest feature: independent B2B implementation packages, free affiliate status, margin-capped one-tier commissions, buyer acceptance and 450-sale progress. **No real cashout.** See [`docs/R7_PARTNER450_POLICY.md`](docs/R7_PARTNER450_POLICY.md).
+
 # OSMANX PROOF R5 — real-work delivery workflow
 
 **Status:** Runnable local **Node.js 22.16+ / SQLite** product prototype; **218/218** automated tests and **14/14** ephemeral HTTP acceptance checks passed on the development runtime. Next.js and PostgreSQL are supplied as source and migration/CI targets, **not a verified running deployment**. No real charges, transfers or production launch.

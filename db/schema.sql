@@ -258,3 +258,40 @@ CREATE TABLE IF NOT EXISTS work_client_responses (
  responder_name TEXT NOT NULL, message TEXT NOT NULL, fingerprint_hash TEXT,
  created_at TEXT NOT NULL, UNIQUE(milestone_id,submission_revision)
 );
+
+-- R7 PARTNER 450: B2B service sales, independent of free partner registration.
+-- No second-tier rewards, joining fee or promised returns. TEST payments only.
+CREATE TABLE IF NOT EXISTS partner450_orders (
+ id TEXT PRIMARY KEY, buyer_id TEXT NOT NULL REFERENCES users(id),org_id TEXT NOT NULL REFERENCES organizations(id),
+ package_id TEXT NOT NULL CHECK(package_id IN ('growth_setup_40k','enterprise_setup_200k')),
+ amount_cents INTEGER NOT NULL CHECK(amount_cents>0),currency TEXT NOT NULL CHECK(currency='RUB'),
+ status TEXT NOT NULL CHECK(status IN ('issued','paid','delivered','accepted','part_refunded','refunded')),
+ created_at TEXT NOT NULL,updated_at TEXT NOT NULL,paid_at TEXT,
+ delivery_note TEXT,delivery_proof_hash TEXT,delivered_at TEXT,accepted_at TEXT,acceptance_receipt_hash TEXT,
+ refunded_cents INTEGER NOT NULL DEFAULT 0 CHECK(refunded_cents >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_partner450_org ON partner450_orders(org_id,created_at);
+CREATE TABLE IF NOT EXISTS partner450_intents (
+ order_id TEXT PRIMARY KEY REFERENCES partner450_orders(id),external_id TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS partner450_payments (
+ id TEXT PRIMARY KEY,order_id TEXT NOT NULL UNIQUE REFERENCES partner450_orders(id),
+ provider TEXT NOT NULL CHECK(provider IN ('SANDBOX_NO_REAL_MONEY','STRIPE_TEST')),
+ external_id TEXT NOT NULL UNIQUE,amount_cents INTEGER NOT NULL CHECK(amount_cents>0),
+ refunded_cents INTEGER NOT NULL DEFAULT 0 CHECK(refunded_cents>=0),created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS partner450_commissions (
+ id TEXT PRIMARY KEY,order_id TEXT NOT NULL UNIQUE REFERENCES partner450_orders(id),
+ buyer_id TEXT NOT NULL UNIQUE REFERENCES users(id),referrer_id TEXT NOT NULL REFERENCES users(id),
+ initial_cents INTEGER NOT NULL CHECK(initial_cents>=0),amount_cents INTEGER NOT NULL CHECK(amount_cents>=0),
+ status TEXT NOT NULL CHECK(status IN ('pending','test_eligible','void')),
+ held_until TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,CHECK(buyer_id!=referrer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_partner450_referrer ON partner450_commissions(referrer_id,status);
+CREATE TABLE IF NOT EXISTS partner450_refunds (
+ id TEXT PRIMARY KEY,payment_id TEXT NOT NULL REFERENCES partner450_payments(id),
+ external_id TEXT NOT NULL UNIQUE,amount_cents INTEGER NOT NULL CHECK(amount_cents>0),created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS partner450_events (
+ event_id TEXT PRIMARY KEY,digest TEXT NOT NULL,created_at TEXT NOT NULL
+);
