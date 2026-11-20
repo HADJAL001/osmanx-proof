@@ -1,3 +1,15 @@
+# OSMANX PROOF — проверенная R7 для закрытого пилота
+
+**Текущий источник:** GitHub `HADJAL001/osmanx-proof`, ветка `feature/pilot-launch-readiness`. Данная поставка не включает неподтверждённые архивы R8–R13 и не предназначена для публичной коммерции.
+
+**Безопасно запустить:** `npm run check && npm run pilot:private`. Программа привязывается исключительно к `127.0.0.1`, отключает платежи, выплаты и email-провайдеров. Для доступа с Windows к VPS используйте SSH-туннель. См. [`START_HERE_RU.md`](START_HERE_RU.md) и [`docs/PRIVATE_PILOT_RUNBOOK_RU.md`](docs/PRIVATE_PILOT_RUNBOOK_RU.md).
+
+**Подтверждения:** текущие Node/HTTP/load/backup тесты, Next.js CI с закреплённым lockfile, реальный Chromium desktop/mobile smoke в отдельной GitHub workflow. Эти проверки НЕ заменяют независимый аудит, юридические соглашения и production staging.
+
+---
+
+## Архивная документация предыдущих релизов
+
 # OSMANX PROOF R7 — PARTNER 450 (test prototype)
 
 Latest feature: independent B2B implementation packages, free affiliate status, margin-capped one-tier commissions, buyer acceptance and 450-sale progress. **No real cashout.** See [`docs/R7_PARTNER450_POLICY.md`](docs/R7_PARTNER450_POLICY.md).
