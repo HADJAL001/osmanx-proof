@@ -1,0 +1,36 @@
+name: OSMANX PROOF R7 real Chromium pilot smoke
+on:
+  push:
+    branches:
+      - feature/pilot-launch-readiness
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-browser-local-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium for headless, isolated QA
+        run: |
+          python -m pip install 'playwright==1.56.0'
+          python -m playwright install --with-deps chromium
+      - name: Exercise actual responsive UI with ephemeral SQLite and PAYMENT_MODE=disabled
+        run: python scripts/pilot-browser-smoke.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: osmanx-pilot-chromium-${{ github.sha }}
+          path: .pilot-browser-qa/
+          retention-days: 7
+          if-no-files-found: warn
+# The script binds loopback only and never accesses production or charges real money.
