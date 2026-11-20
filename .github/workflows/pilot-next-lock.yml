@@ -1,0 +1,41 @@
+name: OSMANX PROOF deterministic Next build and lockfile
+on:
+  push:
+    branches:
+      - feature/pilot-launch-readiness
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  next-ci-and-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web-next
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Generate reproducible lockfile and check npm integrity
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ls --depth=0
+      - name: Verify TypeScript types and production bundle
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npm run build
+      - name: Upload exact lockfile for reviewed commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: osmanx-next-lock-${{ github.sha }}
+          path: web-next/package-lock.json
+          if-no-files-found: error
+          retention-days: 7
+# No deployment. The lockfile must be committed and checked by npm ci in a fresh run.
