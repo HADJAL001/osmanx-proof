@@ -3,6 +3,7 @@ import { one,all,run,transaction } from './db.mjs';
 import { newId, token, sha, now, passwordHash, verifyPassword, isoAddDays, isoAddMonths, cleanText, assert, HttpError } from './security.mjs';
 import { quoteMath, invoicePrice, calculateReward, PRO_PRICE_CENTS, ledgerBalanced } from './finance.mjs';
 import { createWorkflow } from './workflow.mjs';
+import { createEvidence } from './evidence.mjs';
 
 export function createServices(db, options={}) {
  const clock=options.clock||now;
@@ -637,6 +638,7 @@ export function createServices(db, options={}) {
  function setAdmin(email){return write(()=>{
   const u=one(db,'SELECT id FROM users WHERE email=?',email.toLowerCase());assert(u,404,'Admin user not registered');run(db,'UPDATE users SET is_admin=1 WHERE id=?',u.id);audit(u.id,'admin.enabled',u.id);return u.id;
  });}
- const workflow=createWorkflow(db,{member,audit,clock:date});
- return {workflow,db,clock,member,admin,orgs,isPro,setLocale,createUser,authenticate,createSession,getSession,revokeSession,createOrganization,invite,acceptInvite,createQuote,updateQuote,quoteStatus,shareQuote,quoteByShare,respondToQuote,getQuote,listQuotes,createInvoice,invoices,subscriptionDetails,changeSubscription,processPaymentEvent,recordCheckoutSession,recordProviderVerification,reconcileSettlements,settlementReports,rewards,settleRewards,requestPayout,reviewPayout,payoutRequests,createDispute,disputes,reviewDispute,reviewFraud,recheckReferral,assessReferralRisk,adminDashboard,adminLists,auditRecent,verifyAudit,verifyLedger,setAdmin,verificationChallenge,confirmEmailChallenge,acceptLegalTerms,acceptPayoutTerms,taxAttestation,issuePayoutExport,readPayoutExport,revokePayoutExport,requestIdentityReview,reviewIdentity,complianceStatus,preparePayout,privacyRequest,selfDataExport};
+ const evidence=createEvidence(db,{member,admin,audit,clock:date,dir:options.evidenceDir,key:options.evidenceKey,scannerSecret:options.scannerSecret});
+ const workflow=createWorkflow(db,{member,audit,clock:date,evidence});
+ return {workflow,evidence,db,clock,member,admin,orgs,isPro,setLocale,createUser,authenticate,createSession,getSession,revokeSession,createOrganization,invite,acceptInvite,createQuote,updateQuote,quoteStatus,shareQuote,quoteByShare,respondToQuote,getQuote,listQuotes,createInvoice,invoices,subscriptionDetails,changeSubscription,processPaymentEvent,recordCheckoutSession,recordProviderVerification,reconcileSettlements,settlementReports,rewards,settleRewards,requestPayout,reviewPayout,payoutRequests,createDispute,disputes,reviewDispute,reviewFraud,recheckReferral,assessReferralRisk,adminDashboard,adminLists,auditRecent,verifyAudit,verifyLedger,setAdmin,verificationChallenge,confirmEmailChallenge,acceptLegalTerms,acceptPayoutTerms,taxAttestation,issuePayoutExport,readPayoutExport,revokePayoutExport,requestIdentityReview,reviewIdentity,complianceStatus,preparePayout,privacyRequest,selfDataExport};
 }

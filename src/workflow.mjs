@@ -2,7 +2,7 @@ import { one, all, run, transaction } from './db.mjs';
 import { token, sha, newId, isoAddDays, cleanText, assert } from './security.mjs';
 
 // R5 workflow is independent of Stripe and referrals. A customer may use it without referrals.
-export function createWorkflow(db,{member,audit,clock}){
+export function createWorkflow(db,{member,audit,clock,evidence}){
  const stamp=()=>clock();
  const write=fn=>transaction(db,fn);
  const projectFor=(actor,projectId,allowed=['owner','editor','viewer'])=>{
@@ -16,14 +16,14 @@ export function createWorkflow(db,{member,audit,clock}){
  };
  const listMilestones=projectId=>all(db,`SELECT m.id,m.position,m.title,m.description,m.due_at AS dueAt,m.status,m.version,
   m.created_at AS createdAt,m.updated_at AS updatedAt,
-  s.revision AS submittedRevision,s.summary AS submittedSummary,s.content_hash AS contentHash,s.created_at AS submittedAt,
+  s.id AS submissionId,s.revision AS submittedRevision,s.summary AS submittedSummary,s.content_hash AS contentHash,s.created_at AS submittedAt,
   r.decision AS clientDecision,r.responder_name AS responderName,r.message AS clientMessage,r.created_at AS respondedAt
   FROM work_milestones m LEFT JOIN work_submissions s ON s.id=(SELECT id FROM work_submissions
     WHERE milestone_id=m.id ORDER BY revision DESC LIMIT 1)
   LEFT JOIN work_client_responses r ON r.milestone_id=m.id AND r.submission_revision=s.revision
   WHERE m.project_id=? ORDER BY m.position`,projectId);
  const serial=p=>{
-  const milestones=listMilestones(p.id);
+  const milestones=listMilestones(p.id).map(m=>({...m,evidence:m.submissionId?evidence.evidenceForSubmission(m.submissionId):[]}));
   const total=milestones.length,accepted=milestones.filter(m=>m.status==='accepted').length;
   return {id:p.id,orgId:p.org_id,quoteId:p.quote_id,title:p.title,clientName:p.client_name,
    quoteRevision:p.quote_revision,totalCents:p.total_cents,status:p.status,
@@ -82,9 +82,14 @@ export function createWorkflow(db,{member,audit,clock}){
   const {p,m}=milestoneFor(actor,projectId,milestoneId,['owner','editor']);
   assert(p.status==='active'&&['planned','in_progress','changes_requested'].includes(m.status),409,'Milestone is not available for submission');
   const summary=cleanText(body?.summary,2000);assert(summary.length>=10,422,'Submission summary must describe delivered work');
+  const ids=body?.evidenceIds??[];assert(Array.isArray(ids)&&ids.length<=10&&new Set(ids).size===ids.length,422,'Maximum 10 unique evidence IDs');
+  const attachments=ids.map(id=>{const a=one(db,'SELECT id,sha256,status FROM work_evidence WHERE id=? AND project_id=? AND milestone_id=?',id,projectId,milestoneId);
+   assert(a&&a.status==='cleared',409,'Evidence must belong to milestone and pass scanning');return a;}).sort((a,b)=>a.id.localeCompare(b.id));
   const revision=one(db,'SELECT COALESCE(MAX(revision),0) AS n FROM work_submissions WHERE milestone_id=?',milestoneId).n+1;
-  const contentHash=sha(JSON.stringify({milestoneId,revision,title:m.title,summary}));
-  run(db,'INSERT INTO work_submissions(id,milestone_id,revision,summary,content_hash,submitted_by,created_at) VALUES(?,?,?,?,?,?,?)',newId(),milestoneId,revision,summary,contentHash,actor,stamp());
+  const contentHash=sha(JSON.stringify({milestoneId,revision,title:m.title,summary,evidence:attachments.map(a=>({id:a.id,sha256:a.sha256}))}));
+  const submissionId=newId();
+  run(db,'INSERT INTO work_submissions(id,milestone_id,revision,summary,content_hash,submitted_by,created_at) VALUES(?,?,?,?,?,?,?)',submissionId,milestoneId,revision,summary,contentHash,actor,stamp());
+  for(const a of attachments)run(db,'INSERT INTO work_submission_evidence(submission_id,evidence_id) VALUES(?,?)',submissionId,a.id);
   run(db,"UPDATE work_milestones SET status='submitted',version=version+1,updated_at=? WHERE id=?",stamp(),milestoneId);
   audit(actor,'work.milestone.submitted',milestoneId,{projectId,revision,contentHash});return serial(p);
  });}
@@ -112,6 +117,8 @@ export function createWorkflow(db,{member,audit,clock}){
   const share=validShare(raw),p=one(db,'SELECT * FROM work_projects WHERE id=?',share.project_id);
   const milestones=listMilestones(p.id).map(m=>({id:m.id,title:m.title,description:m.description,dueAt:m.dueAt,
    status:m.status,submittedRevision:m.submittedRevision,submittedSummary:m.submittedSummary,
+   evidence: ['submitted','accepted'].includes(m.status)&&m.submissionId?evidence.evidenceForSubmission(m.submissionId)
+     .filter(a=>a.status==='cleared').map(a=>({id:a.id,fileName:a.fileName,mime:a.mime,size:a.size,sha256:a.sha256})):[],
    clientDecision:m.clientDecision,clientMessage:m.clientMessage}));
   return {id:p.id,title:p.title,clientName:p.client_name,status:p.status,milestones,
    expiresAt:share.expires_at,notice:'Token-based acknowledgement only; not a verified electronic signature'};
@@ -133,10 +140,33 @@ export function createWorkflow(db,{member,audit,clock}){
   const total=one(db,'SELECT COUNT(*) AS n FROM work_milestones WHERE project_id=?',p.id).n;
   if(total>0&&outstanding===0)run(db,"UPDATE work_projects SET status='completed',updated_at=? WHERE id=?",stamp(),p.id);
   else run(db,'UPDATE work_projects SET updated_at=? WHERE id=?',stamp(),p.id);
+  if(decision==='accepted'){
+   const attachmentManifest=evidence.evidenceForSubmission(s.id).map(a=>({id:a.id,sha256:a.sha256,size:a.size}));
+   const receipt={format:'OSMANX_DELIVERY_RECEIPT_V1',projectId:p.id,milestoneId,submissionId:s.id,
+    submissionRevision:s.revision,submissionHash:s.content_hash,attachments:attachmentManifest,
+    responseId:id,decision,responderName:name,respondedAt:stamp(),
+    notice:'Acceptance by bearer-link holder only; identity is not independently verified'};
+   const json=JSON.stringify(receipt);
+   run(db,'INSERT INTO work_acceptance_receipts(id,response_id,submission_id,project_id,receipt_json,receipt_sha256,created_at) VALUES(?,?,?,?,?,?,?)',
+    newId(),id,s.id,p.id,json,sha(json),stamp());
+  }
   audit(null,'work.milestone.client_response',milestoneId,{projectId:p.id,revision:s.revision,decision,submissionHash:s.content_hash});
   return {responseId:id,decision,submissionRevision:s.revision,projectCompleted:total>0&&outstanding===0,
    notice:'Response recorded by link holder; identity not independently verified'};
  });}
+ function receiptForMilestone(projectId,milestoneId){
+  const r=one(db,`SELECT r.* FROM work_acceptance_receipts r JOIN work_submissions s ON s.id=r.submission_id
+   WHERE r.project_id=? AND s.milestone_id=? ORDER BY r.created_at DESC LIMIT 1`,projectId,milestoneId);
+  assert(r,404,'Acceptance receipt not found');
+  assert(sha(r.receipt_json)===r.receipt_sha256,409,'Receipt integrity failed','RECEIPT_INTEGRITY');
+  const receipt=JSON.parse(r.receipt_json),submission=one(db,'SELECT * FROM work_submissions WHERE id=?',r.submission_id);
+  assert(submission?.content_hash===receipt.submissionHash&&receipt.submissionId===r.submission_id&&receipt.responseId===r.response_id,409,'Receipt points to changed submission','RECEIPT_INTEGRITY');
+  const actual=evidence.evidenceForSubmission(submission.id).map(a=>({id:a.id,sha256:a.sha256,size:a.size}));
+  assert(JSON.stringify(actual)===JSON.stringify(receipt.attachments),409,'Receipt attachment manifest differs','RECEIPT_INTEGRITY');
+  return {verified:true,sha256:r.receipt_sha256,receipt};
+ }
+ function receipt(actor,projectId,milestoneId){projectFor(actor,projectId);return receiptForMilestone(projectId,milestoneId)}
+ function publicReceipt(raw,milestoneId){const share=validShare(raw);const stage=one(db,'SELECT status FROM work_milestones WHERE id=? AND project_id=?',milestoneId,share.project_id);assert(stage&&stage.status==='accepted',404,'Acceptance receipt unavailable');return receiptForMilestone(share.project_id,milestoneId)}
  function metrics(actor,orgId){member(actor,orgId);
   const values=one(db,`SELECT COUNT(*) AS projects,COALESCE(SUM(total_cents),0) AS contractedValueCents,
    COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END),0) AS completed,
@@ -151,5 +181,5 @@ export function createWorkflow(db,{member,audit,clock}){
   COUNT(m.id) AS milestones,COALESCE(SUM(CASE WHEN m.status='accepted' THEN 1 ELSE 0 END),0) AS accepted
   FROM work_projects p LEFT JOIN work_milestones m ON m.project_id=p.id
   WHERE p.org_id=? GROUP BY p.id ORDER BY p.updated_at DESC LIMIT 5000`,orgId);}
- return {launch,list,details,createMilestone,updateMilestone,submitMilestone,share,revoke,publicDetails,respond,metrics,exportRows};
+ return {launch,list,details,createMilestone,updateMilestone,submitMilestone,share,revoke,publicDetails,respond,receipt,publicReceipt,metrics,exportRows};
 }

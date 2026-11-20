@@ -16,7 +16,7 @@ const readPublic=name=>readFileSync(resolve(root,'public',name));
 const css=readPublic('styles.css'),js=readPublic('app.js'),index=readPublic('index.html'),printCss=readPublic('print.css'),printJs=readPublic('print.js'),reviewJs=readPublic('review.js'),clientCss=readPublic('client.css'),clientJs=readPublic('client.js');
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=c=>(c/100).toLocaleString('ru-RU',{style:'currency',currency:'RUB'});
-const formatClient=(p)=>`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow"><title>${escapeHTML(p.title)} — OSMANX PROOF</title><link rel="stylesheet" href="/client.css"><script defer src="/client.js"></script></head><body><div class="page"><header><strong>OSMANX <span>PROOF</span></strong><small>CLIENT WORK PORTAL · R5</small></header><section class="hero"><div class="eyebrow">ПРОГРЕСС ВЫПОЛНЕНИЯ / WORK PROGRESS</div><h1>${escapeHTML(p.title)}</h1><p>Заказчик / Client: ${escapeHTML(p.clientName)}</p><div class="chip">${escapeHTML(p.status)}</div></section><main>${p.milestones.map(m=>`<article class="milestone"><div class="line"><h2>${escapeHTML(m.title)}</h2><span class="chip">${escapeHTML(m.status)}</span></div><p>${escapeHTML(m.description)}</p>${m.submittedSummary?`<div class="submission"><strong>Представленный результат / Submitted work</strong><p>${escapeHTML(m.submittedSummary)}</p></div>`:''}${m.status==='submitted'?`<form data-milestone="${m.id}"><input type="hidden" name="submissionRevision" value="${m.submittedRevision}"><label>Ваше имя / Your name<input name="name" maxlength="120" required></label><label>Комментарий / Message<textarea name="message" maxlength="1600"></textarea></label><label class="checkbox"><input type="checkbox" name="consent" required> Подтверждаю запись ответа / I agree to record my response</label><div class="actions"><button data-decision="accepted" type="submit">Принять этап / Accept</button><button data-decision="changes_requested" type="submit" class="alt">Запросить правки / Changes</button></div><p role="status" class="result"></p></form>`:''}</article>`).join('')||'<p>Этапов пока нет / No milestones yet</p>'}</main><footer>Ответ подтверждается по временной ссылке и не является квалифицированной электронной подписью. <span>/ This is not a verified legal signature.</span></footer></div></body></html>`;
+const formatClient=(p,shareToken)=>`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow"><title>${escapeHTML(p.title)} — OSMANX PROOF</title><link rel="stylesheet" href="/client.css"><script defer src="/client.js"></script></head><body><div class="page"><header><strong>OSMANX <span>PROOF</span></strong><small>CLIENT WORK PORTAL · R5</small></header><section class="hero"><div class="eyebrow">ПРОГРЕСС ВЫПОЛНЕНИЯ / WORK PROGRESS</div><h1>${escapeHTML(p.title)}</h1><p>Заказчик / Client: ${escapeHTML(p.clientName)}</p><div class="chip">${escapeHTML(p.status)}</div></section><main>${p.milestones.map(m=>`<article class="milestone"><div class="line"><h2>${escapeHTML(m.title)}</h2><span class="chip">${escapeHTML(m.status)}</span></div><p>${escapeHTML(m.description)}</p>${m.submittedSummary?`<div class="submission"><strong>Представленный результат / Submitted work</strong><p>${escapeHTML(m.submittedSummary)}</p></div>`:''}${m.evidence?.length?`<div class="submission"><strong>Проверенные вложения / Reviewed evidence</strong><ul>${m.evidence.map(a=>`<li><a href="/api/public/projects/${encodeURIComponent(shareToken)}/evidence/${encodeURIComponent(a.id)}">${escapeHTML(a.fileName)} (${Math.ceil(a.size/1024)} KiB)</a></li>`).join('')}</ul></div>`:''}${m.status==='accepted'?`<p><a href="/api/public/projects/${encodeURIComponent(shareToken)}/milestones/${encodeURIComponent(m.id)}/receipt">Квитанция приёмки / Acceptance receipt</a></p>`:''}${m.status==='submitted'?`<form data-milestone="${m.id}"><input type="hidden" name="submissionRevision" value="${m.submittedRevision}"><label>Ваше имя / Your name<input name="name" maxlength="120" required></label><label>Комментарий / Message<textarea name="message" maxlength="1600"></textarea></label><label class="checkbox"><input type="checkbox" name="consent" required> Подтверждаю запись ответа / I agree to record my response</label><div class="actions"><button data-decision="accepted" type="submit">Принять этап / Accept</button><button data-decision="changes_requested" type="submit" class="alt">Запросить правки / Changes</button></div><p role="status" class="result"></p></form>`:''}</article>`).join('')||'<p>Этапов пока нет / No milestones yet</p>'}</main><footer>Ответ подтверждается по временной ссылке и не является квалифицированной электронной подписью. <span>/ This is not a verified legal signature.</span></footer></div></body></html>`;
 const formatHtml=(q,{clientReview=false}={})=>{
  const lines=q.items.map(i=>`<tr><td>${escapeHTML(i.description)}</td><td>${i.qty}</td><td>${money(i.unitPriceCents)}</td><td>${money(i.qty*i.unitPriceCents)}</td></tr>`).join('');
  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeHTML(q.title)} — OSMANX PROOF</title><link rel="stylesheet" href="/print.css"><script defer src="/print.js"></script></head><body><p class="muted">OSMANX PROOF · COMMERCIAL OFFER</p><h1>${escapeHTML(q.title)}</h1><p>Клиент: ${escapeHTML(q.clientName||'—')}</p><p class="muted">Предложение № ${escapeHTML(q.id.slice(0,8).toUpperCase())} · ${escapeHTML(q.createdAt.slice(0,10))}</p><table><thead><tr><th>Услуга</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>${lines}</tbody></table><div class="summary"><p>Подытог: ${money(q.math.subtotalCents)}</p><p>Скидка: ${money(q.math.discountCents)}</p><p>Налог: ${money(q.math.taxCents)}</p><h2>Итого: ${money(q.math.totalCents)}</h2></div><p class="muted">Предложение подготовлено с помощью OSMANX PROOF. Подтверждение условий производится непосредственно сторонами.</p><button class="print" id="print-button">Печать / Сохранить PDF</button>${clientReview?`<section class="review" id="review"><h2>Ответ на предложение / Proposal response</h2><p class="muted">Нажатие фиксирует ответ на версию предложения № ${q.revision}. Это подтверждение по ссылке, а не проверенная электронная подпись.</p><label>Имя / Name<input id="respond-name" maxlength="120" required placeholder="Ваше имя"></label><label>Комментарий / Message<textarea id="respond-message" maxlength="1600" placeholder="Что нужно изменить?"></textarea></label><label class="consent"><input type="checkbox" id="respond-consent"> Я подтверждаю свой ответ и понимаю, что он будет сохранён / I consent to record this response</label><div class="review-actions"><button type="button" id="respond-accept">Принять / Accept</button><button type="button" id="respond-changes">Запросить изменения / Request changes</button></div><p id="respond-feedback" role="status"></p></section><script defer src="/review.js"></script>`:''}</body></html>`;
@@ -54,6 +54,14 @@ export function createHttpServer(options={}){
   const body=JSON.stringify(data);res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers});res.end(body);
  };
  const file=(res,body,type)=>{res.writeHead(200,{'content-type':type,'cache-control':'public,max-age=300'});res.end(body)};
+ const attachment=(res,data,meta)=>{
+  const safeName=String(meta.fileName).replace(/[^A-Za-z0-9_.-]/g,'_').slice(0,120)||'evidence';
+  res.writeHead(200,{'content-type':meta.mime,'content-length':data.length,
+   'content-disposition':`attachment; filename="${safeName}"`,
+   'cache-control':'private, no-store','x-content-type-options':'nosniff',
+   'cross-origin-resource-policy':'same-origin','referrer-policy':'no-referrer'});
+  return res.end(data);
+ };
  const getCookies=req=>Object.fromEntries((req.headers.cookie||'').split(';').filter(Boolean).map(s=>{let at=s.indexOf('=');return [s.slice(0,at).trim(),s.slice(at+1).trim()]}));
  const rawBody=async(req,max=65536)=>{let chunks=[],size=0;for await(const chunk of req){size+=chunk.length;if(size>max)throw new HttpError(413,'Request too large');chunks.push(chunk)}return Buffer.concat(chunks).toString('utf8');};
  const jsonBody=async(req,max=65536)=>{
@@ -108,7 +116,7 @@ export function createHttpServer(options={}){
    if(req.method==='GET'&&startPath==='/client.js')return file(res,clientJs,'text/javascript; charset=utf-8');
    if(req.method==='GET'&&/^\/c\/[A-Za-z0-9_-]+$/.test(startPath)){
     const p=svc.workflow.publicDetails(startPath.slice(3));res.setHeader('referrer-policy','no-referrer');
-    res.setHeader('x-robots-tag','noindex,nofollow');res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});return res.end(formatClient(p));
+    res.setHeader('x-robots-tag','noindex,nofollow');res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});return res.end(formatClient(p,startPath.slice(3)));
    }
    if(req.method==='GET'&&(startPath==='/'||startPath==='/app'))return file(res,index,'text/html; charset=utf-8');
    if(req.method==='GET'&&startPath.startsWith('/s/')){
@@ -126,6 +134,14 @@ export function createHttpServer(options={}){
     const body=await jsonBody(req),fingerprint=createHmac('sha256',ipSecret).update(ipOf(req)).digest('hex');
     return send(res,201,{ok:true,...svc.workflow.respond(publicMilestone[1],publicMilestone[2],body,fingerprint)});
    }
+   const publicEvidence=path.match(/^\/public\/projects\/([A-Za-z0-9_-]+)\/evidence\/([\w-]+)$/);
+   if(req.method==='GET'&&publicEvidence){
+    rateLimit(ipOf(req),'evidence-client-read',50);
+    const {data,metadata}=svc.evidence.publicDownload(publicEvidence[1],publicEvidence[2]);
+    return attachment(res,data,metadata);
+   }
+   const publicReceipt=path.match(/^\/public\/projects\/([A-Za-z0-9_-]+)\/milestones\/([\w-]+)\/receipt$/);
+   if(req.method==='GET'&&publicReceipt)return send(res,200,{ok:true,...svc.workflow.publicReceipt(publicReceipt[1],publicReceipt[2])});
    const publicProject=path.match(/^\/public\/projects\/([A-Za-z0-9_-]+)$/);
    if(req.method==='GET'&&publicProject)return send(res,200,{ok:true,project:svc.workflow.publicDetails(publicProject[1])});
    const publicResponse=path.match(/^\/public\/quotes\/([A-Za-z0-9_-]+)\/respond$/);
@@ -222,6 +238,32 @@ export function createHttpServer(options={}){
     res.writeHead(200,{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="osmanx-projects.csv"','cache-control':'no-store'});
     return res.end('\ufeff'+csv);
    }
+   if(req.method==='GET'&&path==='/admin/evidence/quarantine')return send(res,200,{ok:true,queue:svc.evidence.quarantineQueue(id,Number(url.searchParams.get('limit')||50))});
+   if(req.method==='GET'&&path==='/admin/evidence/integrity'){
+    svc.admin(id);rateLimit(ipOf(req),'vault-integrity:'+id,2);
+    return send(res,200,{ok:true,...svc.evidence.verifyStore()});
+   }
+   let ev=path.match(/^\/projects\/([\w-]+)\/milestones\/([\w-]+)\/evidence$/);
+   if(ev){
+    if(req.method==='GET')return send(res,200,{ok:true,evidence:svc.evidence.list(id,ev[1],ev[2])});
+    if(req.method==='POST'){
+     rateLimit(ipOf(req),'evidence-upload:'+id,25);
+     const body=await jsonBody(req,3*1024*1024);
+     return send(res,201,{ok:true,evidence:svc.evidence.upload(id,ev[1],ev[2],body)});
+    }
+   }
+   ev=path.match(/^\/projects\/([\w-]+)\/evidence\/([\w-]+)$/);
+   if(ev){
+    if(req.method==='GET'){const {data,metadata}=svc.evidence.download(id,ev[1],ev[2]);return attachment(res,data,metadata)}
+    if(req.method==='POST')return send(res,200,{ok:true,evidence:svc.evidence.revoke(id,ev[1],ev[2],(await jsonBody(req)).reason)});
+   }
+   ev=path.match(/^\/admin\/evidence\/([\w-]+)\/scan$/);
+   if(ev&&req.method==='POST'){
+    rateLimit(ipOf(req),'evidence-scan:'+id,100);
+    return send(res,200,{ok:true,evidence:svc.evidence.scan(id,ev[1],await jsonBody(req))});
+   }
+   ev=path.match(/^\/projects\/([\w-]+)\/milestones\/([\w-]+)\/receipt$/);
+   if(ev&&req.method==='GET')return send(res,200,{ok:true,...svc.workflow.receipt(id,ev[1],ev[2])});
    let wm=path.match(/^\/projects\/([\w-]+)\/milestones\/([\w-]+)\/(submit)$/);
    if(req.method==='POST'&&wm){const b=await jsonBody(req);return send(res,200,{ok:true,project:svc.workflow.submitMilestone(id,wm[1],wm[2],b)});}
    wm=path.match(/^\/projects\/([\w-]+)\/milestones\/([\w-]+)$/);
