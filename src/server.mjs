@@ -150,12 +150,19 @@ export function createHttpServer(options={}){
     let event;try{event=JSON.parse(raw)}catch{throw new HttpError(400,'Invalid Stripe JSON')}
     const mapped=mapStripeTestEvent(event);
     if(!mapped)return send(res,200,{ok:true,ignored:true});
+    if(mapped.type==='payment.succeeded'&&svc.partner450.isOrder(mapped.invoiceId))
+     return send(res,200,{ok:true,...svc.partner450.processEvent(mapped)});
+    if(mapped.type==='payment.refunded'&&svc.partner450.isPayment(mapped.paymentExternalId))
+     return send(res,200,{ok:true,...svc.partner450.processEvent(mapped)});
     return send(res,200,{ok:true,...svc.processPaymentEvent(mapped)});
    }
    if(req.method==='POST'&&path==='/compliance/email/confirm'){
     const b=await jsonBody(req);rateLimit(ipOf(req),'email-confirm',15);
     return send(res,200,{ok:true,...svc.confirmEmailChallenge(b.token)});
    }
+   // Public read-only B2B catalogue; free affiliate registration uses /auth/register.
+   if(req.method==='GET'&&path==='/partner450/catalog')
+    return send(res,200,{ok:true,...svc.partner450.catalog()});
    if(req.method==='POST'&&path==='/auth/register'){
     protect(req,null);rateLimit(ipOf(req),'register',5);
     const body=await jsonBody(req);
@@ -252,6 +259,45 @@ export function createHttpServer(options={}){
    if(req.method==='GET'&&path==='/subscriptions')return send(res,200,{ok:true,subscription:svc.subscriptionDetails(id,url.searchParams.get('orgId'))});
    m=path.match(/^\/subscriptions\/([\w-]+)\/(cancel|resume)$/);
    if(req.method==='POST'&&m)return send(res,200,{ok:true,subscription:svc.changeSubscription(id,m[1],m[2])});
+   // PARTNER 450: every purchase is a stand-alone, specified service order.
+   if(req.method==='GET'&&path==='/partner450/me'){
+    const data=svc.partner450.wallet(id);return send(res,200,{ok:true,...data,referralUrl:`${origin}/?ref=${encodeURIComponent(data.code)}`});
+   }
+   if(req.method==='GET'&&path==='/partner450/orders')return send(res,200,{ok:true,orders:svc.partner450.orders(id,url.searchParams.get('orgId'))});
+   if(req.method==='POST'&&path==='/partner450/orders'){
+    rateLimit(ipOf(req),'partner450-order:'+id,12);
+    const b=await jsonBody(req);return send(res,201,{ok:true,order:svc.partner450.createOrder(id,b)});
+   }
+   let partnerRoute=path.match(/^\/partner450\/orders\/([\w-]+)\/(intent|sandbox-pay|accept)$/);
+   if(req.method==='POST'&&partnerRoute){
+    const [_,orderId,action]=partnerRoute;
+    if(action==='accept')return send(res,200,{ok:true,...svc.partner450.accept(id,orderId,await jsonBody(req))});
+    const order=svc.partner450.orderForBuyer(id,orderId);
+    if(action==='sandbox-pay'){
+     assert(mode==='sandbox'&&!prod,403,'Sandbox simulation disabled');rateLimit(ipOf(req),'partner450-sim:'+id,5);
+     return send(res,200,{ok:true,...svc.partner450.processEvent({id:'evt_partner_sandbox_'+crypto.randomUUID(),
+      type:'payment.succeeded',provider:'SANDBOX_NO_REAL_MONEY',invoiceId:order.id,
+      externalId:'sandbox_p450_'+crypto.randomUUID(),amountCents:order.amount_cents,currency:'RUB'},{sandbox:true})});
+    }
+    assert(mode==='stripe_test'&&!prod,403,'Stripe TEST disabled');rateLimit(ipOf(req),'partner450-test-intent:'+id,5);
+    const invoice={...order,id:order.id,total_cents:order.amount_cents,status:order.status,currency:'RUB'};
+    const result=await createStripeTestIntent(invoice,{secretKey:stripeSecretKey,fetchFn:stripeFetch});
+    svc.partner450.bindTestIntent(id,order.id,result.intentId);
+    return send(res,200,{ok:true,intent:result});
+   }
+   if(req.method==='GET'&&path==='/admin/partner450/orders')return send(res,200,{ok:true,orders:svc.partner450.adminOrders(id)});
+   if(req.method==='POST'&&path==='/admin/partner450/review')return send(res,200,{ok:true,...svc.partner450.settle(id)});
+   let partnerAdmin=path.match(/^\/admin\/partner450\/orders\/([\w-]+)\/(deliver|sandbox-refund)$/);
+   if(req.method==='POST'&&partnerAdmin){
+    if(partnerAdmin[2]==='deliver')return send(res,200,{ok:true,order:svc.partner450.deliver(id,partnerAdmin[1],await jsonBody(req))});
+    svc.admin(id);assert(mode==='sandbox'&&!prod,403,'Sandbox refund unavailable');
+    const b=await jsonBody(req);
+    const payment=db.prepare('SELECT * FROM partner450_payments WHERE order_id=?').get(partnerAdmin[1]);
+    assert(payment?.provider==='SANDBOX_NO_REAL_MONEY',404,'Simulated payment not found');
+    return send(res,200,{ok:true,...svc.partner450.processEvent({id:'evt_partner_refund_'+crypto.randomUUID(),
+     type:'payment.refunded',provider:'SANDBOX_NO_REAL_MONEY',paymentExternalId:payment.external_id,
+     externalId:'sandbox_ref_'+crypto.randomUUID(),amountCents:b.amountCents},{sandbox:true})});
+   }
    if(req.method==='GET'&&path==='/invoices')return send(res,200,{ok:true,invoices:svc.invoices(id,url.searchParams.get('orgId'))});
    if(req.method==='POST'&&path==='/invoices'){const b=await jsonBody(req);return send(res,201,{ok:true,invoice:svc.createInvoice(id,b.orgId)})}
    if(req.method==='POST'&&path==='/billing/stripe-test/intent'){
