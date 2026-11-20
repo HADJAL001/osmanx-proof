@@ -32,5 +32,6 @@ jobs:
           name: osmanx-pilot-chromium-${{ github.sha }}
           path: .pilot-browser-qa/
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: error
+          include-hidden-files: true
 # The script binds loopback only and never accesses production or charges real money.
