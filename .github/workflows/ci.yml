@@ -1,9 +1,7 @@
-name: OSMANX PROOF R5 verification
+name: OSMANX PROOF R6 evidence and workflow verification
 on:
   push:
   pull_request:
-permissions:
-  contents: read
 jobs:
   backend-regression:
     runs-on: ubuntu-latest
@@ -11,10 +9,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22.16.0'}
-      - name: R1-R5 tests and syntax
+      - name: R1-R6 tests, vault rules and syntax
         run: npm run check
       - name: R5 ephemeral end-to-end HTTP acceptance
         run: npm run acceptance:r5
+      - name: R6 encrypted evidence end-to-end tests
+        run: npm run acceptance:r6
       - name: Local concurrency and rate limit
         run: npm run load:smoke
       - name: Encrypted backup restore
@@ -33,7 +33,7 @@ jobs:
       PGPASSWORD: proof_test_password
     steps:
       - uses: actions/checkout@v4
-      - name: Apply schema and test tenant role matrix in disposable PostgreSQL 16
+      - name: Apply R1-R6 schema and test tenant/evidence RLS on PostgreSQL 16
         run: |
           export DATABASE_URL='postgresql://proof_test:proof_test_password@127.0.0.1:5432/proof_test'
           sh deploy/r5-postgres-test.sh

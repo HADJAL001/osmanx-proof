@@ -166,7 +166,7 @@ export function createWorkflow(db,{member,audit,clock,evidence}){
   return {verified:true,sha256:r.receipt_sha256,receipt};
  }
  function receipt(actor,projectId,milestoneId){projectFor(actor,projectId);return receiptForMilestone(projectId,milestoneId)}
- function publicReceipt(raw,milestoneId){const share=validShare(raw);return receiptForMilestone(share.project_id,milestoneId)}
+ function publicReceipt(raw,milestoneId){const share=validShare(raw);const stage=one(db,'SELECT status FROM work_milestones WHERE id=? AND project_id=?',milestoneId,share.project_id);assert(stage&&stage.status==='accepted',404,'Acceptance receipt unavailable');return receiptForMilestone(share.project_id,milestoneId)}
  function metrics(actor,orgId){member(actor,orgId);
   const values=one(db,`SELECT COUNT(*) AS projects,COALESCE(SUM(total_cents),0) AS contractedValueCents,
    COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END),0) AS completed,

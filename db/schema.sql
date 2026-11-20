@@ -265,7 +265,7 @@ CREATE TABLE IF NOT EXISTS work_evidence (
  milestone_id TEXT NOT NULL REFERENCES work_milestones(id), file_name TEXT NOT NULL,
  mime_type TEXT NOT NULL CHECK(mime_type IN ('application/pdf','image/png','image/jpeg','text/plain')),
  size_bytes INTEGER NOT NULL CHECK(size_bytes BETWEEN 1 AND 2097152),sha256 TEXT NOT NULL,
- status TEXT NOT NULL DEFAULT 'quarantined' CHECK(status IN ('quarantined','cleared','rejected')),
+ status TEXT NOT NULL DEFAULT 'quarantined' CHECK(status IN ('quarantined','cleared','rejected','revoked')),
  scan_engine TEXT,scanned_at TEXT,created_by TEXT NOT NULL REFERENCES users(id),created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_work_evidence_milestone ON work_evidence(milestone_id,created_at);
